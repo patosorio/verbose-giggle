@@ -1,0 +1,23 @@
+# Python
+api/.venv/
+api/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Node
+client/node_modules/
+client/.next/
+
+# Env
+.env
+.env.local
+*.env.*.local
+
+**/cookies.txt
+
+# OS
+.DS_Store
+
+# Docs
+docs/
+.cursorrules

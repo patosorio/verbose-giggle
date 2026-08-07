@@ -1,0 +1,19 @@
+# Vercel deploys client/ directly from GitHub — no Cloud Build step required for the frontend.
+# Worker step lands here in Phase 7, same shape as the api build/push pair below.
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_ARTIFACT_REGISTRY}/travelagency-api:${SHORT_SHA}
+      - -f
+      - api/Dockerfile.api
+      - api/
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_ARTIFACT_REGISTRY}/travelagency-api:${SHORT_SHA}
+
+images:
+  - ${_ARTIFACT_REGISTRY}/travelagency-api:${SHORT_SHA}

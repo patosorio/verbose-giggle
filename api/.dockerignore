@@ -1,0 +1,24 @@
+# Secrets / local runtime
+.env
+.env.*
+!.env.example
+*.env.*.local
+cookies.txt
+
+# Local tooling / caches
+.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Tests and local docs (not needed in the runtime image)
+tests/
+README.md
+.python-version
+
+# OS
+.DS_Store

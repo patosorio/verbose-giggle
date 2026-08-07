@@ -1,0 +1,36 @@
+services:
+  api:
+    build:
+      context: api
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8080"
+    env_file:
+      - api/.env
+    environment:
+      # Overrides the .env value for container-to-container traffic on the compose network.
+      # api/.env's DATABASE_URL is host-oriented (localhost:<remapped-port>) for `uv run`
+      # dev; inside the container, "db" is the service's actual hostname on the compose
+      # network and 5432 is its real listening port — unaffected by whatever host port
+      # db's own "ports:" mapping below uses.
+      DATABASE_URL: postgresql+asyncpg://travelagency:travelagency@db:5432/travelagency
+    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+    volumes:
+      # Local/dev: pick up code changes without rebuild. Rebuild still needed for deps.
+      - ./api:/app
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: travelagency
+      POSTGRES_USER: travelagency
+      POSTGRES_PASSWORD: travelagency
+    ports:
+      - "5433:5432"
+    volumes:
+      - travelagency_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  travelagency_postgres_data:
