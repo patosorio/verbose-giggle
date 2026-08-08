@@ -1,0 +1,43 @@
+{
+  "search_metadata": {
+    "id": "fixture-flights-booking",
+    "status": "Success"
+  },
+  "search_parameters": {
+    "engine": "google_flights",
+    "booking_token": "token-flight-01",
+    "currency": "THB"
+  },
+  "booking_options": [
+    {
+      "together": {
+        "book_with": "Thai Airways",
+        "airline": true,
+        "price": 2100,
+        "booking_request": {
+          "url": "https://www.google.com/travel/clk/f",
+          "post_data": "u=fixture-post-body-thai-airways"
+        }
+      }
+    },
+    {
+      "together": {
+        "book_with": "Expedia",
+        "airline": false,
+        "price": 2185,
+        "booking_request": {
+          "url": "https://www.google.com/travel/clk/f",
+          "post_data": "u=fixture-post-body-expedia"
+        }
+      }
+    },
+    {
+      "together": {
+        "book_with": "Kayak",
+        "airline": false,
+        "price": 2150,
+        "link": "https://www.kayak.com/flights/BKK-HKT/2026-11-10"
+      }
+    }
+  ]
+}

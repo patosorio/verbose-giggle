@@ -11,3 +11,5 @@ def setup_logging() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    # httpx logs the full request URL at INFO, which would include SERPAPI_KEY.
+    logging.getLogger("httpx").setLevel(logging.WARNING)

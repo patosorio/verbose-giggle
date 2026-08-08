@@ -1,0 +1,181 @@
+{
+  "search_metadata": {
+    "id": "fixture-flights-search",
+    "status": "Success"
+  },
+  "search_parameters": {
+    "engine": "google_flights",
+    "departure_id": "BKK",
+    "arrival_id": "HKT",
+    "outbound_date": "2026-11-10",
+    "currency": "THB",
+    "type": "2",
+    "adults": "6",
+    "children": "1"
+  },
+  "best_flights": [
+    {
+      "flights": [
+        {
+          "departure_airport": {"name": "Suvarnabhumi", "id": "BKK", "time": "2026-11-10 07:00"},
+          "arrival_airport": {"name": "Phuket International", "id": "HKT", "time": "2026-11-10 08:20"},
+          "duration": 80,
+          "airline": "Thai Airways",
+          "flight_number": "TG 201",
+          "extensions": ["Average legroom (31 in)", "1 free checked bag"]
+        }
+      ],
+      "total_duration": 80,
+      "carbon_emissions": {"this_flight": 72000},
+      "price": 2100,
+      "type": "One way",
+      "booking_token": "token-flight-01"
+    },
+    {
+      "flights": [
+        {
+          "departure_airport": {"name": "Suvarnabhumi", "id": "BKK", "time": "2026-11-10 09:15"},
+          "arrival_airport": {"name": "Phuket International", "id": "HKT", "time": "2026-11-10 10:35"},
+          "duration": 80,
+          "airline": "Bangkok Airways",
+          "flight_number": "PG 275",
+          "extensions": ["Average legroom (30 in)"]
+        }
+      ],
+      "total_duration": 80,
+      "price": 2450,
+      "type": "One way",
+      "booking_token": "token-flight-02"
+    },
+    {
+      "flights": [
+        {
+          "departure_airport": {"name": "Suvarnabhumi", "id": "BKK", "time": "2026-11-10 11:00"},
+          "arrival_airport": {"name": "Phuket International", "id": "HKT", "time": "2026-11-10 12:20"},
+          "duration": 80,
+          "airline": "AirAsia",
+          "flight_number": "FD 3010",
+          "extensions": ["Below average legroom (29 in)"]
+        }
+      ],
+      "total_duration": 80,
+      "price": 1890,
+      "type": "One way",
+      "booking_token": "token-flight-03"
+    }
+  ],
+  "other_flights": [
+    {
+      "flights": [
+        {
+          "departure_airport": {"name": "Don Mueang", "id": "DMK", "time": "2026-11-10 06:30"},
+          "arrival_airport": {"name": "Phuket International", "id": "HKT", "time": "2026-11-10 08:00"},
+          "duration": 90,
+          "airline": "Nok Air",
+          "flight_number": "DD 510",
+          "extensions": []
+        }
+      ],
+      "total_duration": 90,
+      "price": 1650,
+      "type": "One way",
+      "booking_token": "token-flight-04"
+    },
+    {
+      "flights": [
+        {
+          "departure_airport": {"name": "Suvarnabhumi", "id": "BKK", "time": "2026-11-10 13:40"},
+          "arrival_airport": {"name": "Phuket International", "id": "HKT", "time": "2026-11-10 15:00"},
+          "duration": 80,
+          "airline": "Thai Vietjet",
+          "flight_number": "VZ 302",
+          "extensions": []
+        }
+      ],
+      "total_duration": 80,
+      "price": 2800,
+      "type": "One way",
+      "booking_token": "token-flight-05"
+    },
+    {
+      "flights": [
+        {
+          "departure_airport": {"name": "Suvarnabhumi", "id": "BKK", "time": "2026-11-10 16:10"},
+          "arrival_airport": {"name": "Phuket International", "id": "HKT", "time": "2026-11-10 17:30"},
+          "duration": 80,
+          "airline": "Thai Lion Air",
+          "flight_number": "SL 780",
+          "extensions": []
+        }
+      ],
+      "total_duration": 80,
+      "price": 3100,
+      "type": "One way",
+      "booking_token": "token-flight-06"
+    },
+    {
+      "flights": [
+        {
+          "departure_airport": {"name": "Suvarnabhumi", "id": "BKK", "time": "2026-11-10 18:00"},
+          "arrival_airport": {"name": "Phuket International", "id": "HKT", "time": "2026-11-10 19:20"},
+          "duration": 80,
+          "airline": "Thai Airways",
+          "flight_number": "TG 217",
+          "extensions": ["1 free checked bag"]
+        }
+      ],
+      "total_duration": 80,
+      "price": 3600,
+      "type": "One way",
+      "booking_token": "token-flight-07"
+    },
+    {
+      "flights": [
+        {
+          "departure_airport": {"name": "Suvarnabhumi", "id": "BKK", "time": "2026-11-10 19:45"},
+          "arrival_airport": {"name": "Phuket International", "id": "HKT", "time": "2026-11-10 21:05"},
+          "duration": 80,
+          "airline": "Bangkok Airways",
+          "flight_number": "PG 291",
+          "extensions": []
+        }
+      ],
+      "total_duration": 80,
+      "price": 3900,
+      "type": "One way",
+      "booking_token": "token-flight-08"
+    },
+    {
+      "flights": [
+        {
+          "departure_airport": {"name": "Suvarnabhumi", "id": "BKK", "time": "2026-11-10 20:30"},
+          "arrival_airport": {"name": "Phuket International", "id": "HKT", "time": "2026-11-10 21:50"},
+          "duration": 80,
+          "airline": "Thai Airways",
+          "flight_number": "TG 229",
+          "extensions": ["1 free checked bag"]
+        }
+      ],
+      "total_duration": 80,
+      "price": 4200,
+      "type": "One way",
+      "booking_token": "token-flight-09"
+    },
+    {
+      "flights": [
+        {
+          "departure_airport": {"name": "Suvarnabhumi", "id": "BKK", "time": "2026-11-10 21:15"},
+          "arrival_airport": {"name": "Phuket International", "id": "HKT", "time": "2026-11-10 22:35"},
+          "duration": 80,
+          "airline": "Thai Airways",
+          "flight_number": "TG 231",
+          "extensions": []
+        }
+      ],
+      "total_duration": 80,
+      "price": 4800,
+      "type": "One way",
+      "booking_token": "token-flight-10"
+    }
+  ]
+}

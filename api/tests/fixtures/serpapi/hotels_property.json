@@ -1,0 +1,36 @@
+{
+  "search_metadata": {
+    "id": "fixture-hotels-property",
+    "status": "Success"
+  },
+  "search_parameters": {
+    "engine": "google_hotels",
+    "property_token": "prop-01",
+    "check_in_date": "2026-11-10",
+    "check_out_date": "2026-11-14",
+    "currency": "THB"
+  },
+  "type": "hotel",
+  "name": "Budget Inn Patong",
+  "property_token": "prop-01",
+  "prices": [
+    {
+      "source": "Booking.com",
+      "link": "https://www.booking.com/hotel/th/budget-inn-patong.html",
+      "total_rate": {"lowest": "฿4800", "extracted_lowest": 4800},
+      "free_cancellation": true
+    },
+    {
+      "source": "Hotels.com",
+      "link": "https://www.hotels.com/ho123/budget-inn-patong",
+      "total_rate": {"lowest": "฿4950", "extracted_lowest": 4950},
+      "free_cancellation": false
+    },
+    {
+      "source": "Agoda",
+      "link": "https://www.agoda.com/budget-inn-patong",
+      "total_rate": {"lowest": "฿4700", "extracted_lowest": 4700},
+      "free_cancellation": true
+    }
+  ]
+}

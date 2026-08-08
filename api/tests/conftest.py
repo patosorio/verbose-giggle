@@ -18,6 +18,12 @@ _PG_ENUM_TYPE_NAMES = (
     "trip_member_role",
     "age_category",
     "leg_status",
+    "option_type",
+    "research_run_type",
+    "research_run_status",
+    "raw_api_source",
+    "reaction_type",
+    "lock_event_type",
 )
 
 

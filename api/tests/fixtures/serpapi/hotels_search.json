@@ -1,0 +1,124 @@
+{
+  "search_metadata": {
+    "id": "fixture-hotels-search",
+    "status": "Success"
+  },
+  "search_parameters": {
+    "engine": "google_hotels",
+    "q": "Phuket hotels",
+    "check_in_date": "2026-11-10",
+    "check_out_date": "2026-11-14",
+    "currency": "THB",
+    "adults": "6",
+    "children": "1"
+  },
+  "properties": [
+    {
+      "type": "hotel",
+      "name": "Budget Inn Patong",
+      "property_token": "prop-01",
+      "gps_coordinates": {"latitude": 7.8965, "longitude": 98.2965},
+      "extracted_hotel_class": 2,
+      "total_rate": {"lowest": "฿4800", "extracted_lowest": 4800},
+      "free_cancellation": true,
+      "eco_certified": false,
+      "amenities": ["Free Wi-Fi", "Pool"]
+    },
+    {
+      "type": "hotel",
+      "name": "Coral Bay Hotel",
+      "property_token": "prop-02",
+      "gps_coordinates": {"latitude": 7.9012, "longitude": 98.3011},
+      "extracted_hotel_class": 3,
+      "total_rate": {"lowest": "฿7200", "extracted_lowest": 7200},
+      "free_cancellation": true,
+      "eco_certified": false,
+      "amenities": ["Free Wi-Fi", "Breakfast"]
+    },
+    {
+      "type": "hotel",
+      "name": "Andaman Comfort",
+      "property_token": "prop-03",
+      "gps_coordinates": {"latitude": 7.8801, "longitude": 98.3922},
+      "extracted_hotel_class": 3,
+      "total_rate": {"lowest": "฿9100", "extracted_lowest": 9100},
+      "free_cancellation": false,
+      "eco_certified": true,
+      "amenities": ["Pool", "Spa"]
+    },
+    {
+      "type": "hotel",
+      "name": "Kata Beach Resort",
+      "property_token": "prop-04",
+      "gps_coordinates": {"latitude": 7.8204, "longitude": 98.2978},
+      "extracted_hotel_class": 4,
+      "total_rate": {"lowest": "฿12500", "extracted_lowest": 12500},
+      "free_cancellation": true,
+      "eco_certified": false,
+      "amenities": ["Beach access", "Pool"]
+    },
+    {
+      "type": "hotel",
+      "name": "Phuket Marriott",
+      "property_token": "prop-05",
+      "gps_coordinates": {"latitude": 7.8950, "longitude": 98.2940},
+      "extracted_hotel_class": 5,
+      "total_rate": {"lowest": "฿18900", "extracted_lowest": 18900},
+      "free_cancellation": true,
+      "eco_certified": true,
+      "amenities": ["Spa", "Pool", "Gym"]
+    },
+    {
+      "type": "hotel",
+      "name": "Surin Luxury Villas",
+      "property_token": "prop-06",
+      "gps_coordinates": {"latitude": 7.9760, "longitude": 98.2780},
+      "extracted_hotel_class": 5,
+      "total_rate": {"lowest": "฿24500", "extracted_lowest": 24500},
+      "free_cancellation": false,
+      "eco_certified": false,
+      "amenities": ["Private pool", "Kitchen"]
+    },
+    {
+      "type": "hotel",
+      "name": "Old Town Guesthouse",
+      "property_token": "prop-07",
+      "gps_coordinates": {"latitude": 7.8840, "longitude": 98.3910},
+      "extracted_hotel_class": 2,
+      "total_rate": {"lowest": "฿3900", "extracted_lowest": 3900},
+      "free_cancellation": true,
+      "eco_certified": false,
+      "amenities": ["Free Wi-Fi"]
+    },
+    {
+      "type": "hotel",
+      "name": "Rawai Seaside Inn",
+      "property_token": "prop-08",
+      "gps_coordinates": {"latitude": 7.7790, "longitude": 98.3250},
+      "extracted_hotel_class": 3,
+      "total_rate": {"lowest": "฿8600", "extracted_lowest": 8600},
+      "free_cancellation": true,
+      "eco_certified": false,
+      "amenities": ["Pool"]
+    },
+    {
+      "type": "hotel",
+      "name": "Cape Panwa Hotel",
+      "property_token": "prop-09",
+      "gps_coordinates": {"latitude": 7.8150, "longitude": 98.4030},
+      "extracted_hotel_class": 5,
+      "total_rate": {"lowest": "฿27800", "extracted_lowest": 27800},
+      "free_cancellation": true,
+      "eco_certified": true,
+      "amenities": ["Beach access", "Spa"]
+    },
+    {
+      "type": "hotel",
+      "name": "Skipped No Token Hotel",
+      "gps_coordinates": {"latitude": 7.8000, "longitude": 98.3000},
+      "extracted_hotel_class": 3,
+      "total_rate": {"lowest": "฿5000", "extracted_lowest": 5000},
+      "amenities": []
+    }
+  ]
+}
