@@ -58,6 +58,7 @@ class OptionType(enum.StrEnum):
     flight = "flight"
     hotel = "hotel"
     activity = "activity"
+    transport = "transport"
     imported = "imported"
 
 
@@ -65,7 +66,16 @@ class ResearchRunType(enum.StrEnum):
     flights = "flights"
     hotels = "hotels"
     activities = "activities"
+    transport = "transport"
     full = "full"
+
+
+class TransportMode(enum.StrEnum):
+    ferry = "ferry"
+    train = "train"
+    bus = "bus"
+    private_van = "private_van"
+    other = "other"
 
 
 class ResearchRunStatus(enum.StrEnum):
@@ -204,6 +214,9 @@ class Traveler(Base):
 
 class Leg(Base):
     __tablename__ = "legs"
+    __table_args__ = (
+        UniqueConstraint("trip_id", "sequence_index", name="uq_legs_trip_id_sequence_index"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     trip_id: Mapped[uuid.UUID] = mapped_column(
@@ -214,6 +227,8 @@ class Leg(Base):
     sequence_index: Mapped[int] = mapped_column(Integer, nullable=False)
     origin: Mapped[str] = mapped_column(String, nullable=False)
     destination: Mapped[str] = mapped_column(String, nullable=False)
+    origin_iata: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    destination_iata: Mapped[str | None] = mapped_column(String(3), nullable=True)
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     nights: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -270,7 +285,7 @@ class OptionCard(Base):
         nullable=False,
     )
     option_type: Mapped[OptionType] = mapped_column(_pg_enum(OptionType, "option_type"), nullable=False)
-    tier: Mapped[BudgetBand] = mapped_column(budget_band_enum, nullable=False)
+    tier: Mapped[BudgetBand | None] = mapped_column(budget_band_enum, nullable=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     base_price_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
@@ -279,6 +294,12 @@ class OptionCard(Base):
         ForeignKey("raw_api_responses.id"),
         nullable=False,
     )
+    research_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("research_runs.id"),
+        nullable=True,
+    )
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -342,6 +363,27 @@ class ActivityOption(Base):
     estimated_price_currency: Mapped[str] = mapped_column(String(3), nullable=False)
 
 
+class TransportOption(Base):
+    __tablename__ = "transport_options"
+
+    option_card_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("option_cards.id"),
+        primary_key=True,
+    )
+    mode: Mapped[TransportMode] = mapped_column(
+        _pg_enum(TransportMode, "transport_mode"),
+        nullable=False,
+    )
+    operator_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    departure_point: Mapped[str] = mapped_column(Text, nullable=False)
+    arrival_point: Mapped[str] = mapped_column(Text, nullable=False)
+    estimated_duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    estimated_price_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    estimated_price_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    booking_url: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
 class ImportedOption(Base):
     __tablename__ = "imported_options"
 
@@ -362,9 +404,9 @@ class Citation(Base):
     __tablename__ = "citations"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    activity_option_id: Mapped[uuid.UUID] = mapped_column(
+    option_card_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("activity_options.option_card_id"),
+        ForeignKey("option_cards.id"),
         nullable=False,
     )
     claim_text: Mapped[str] = mapped_column(Text, nullable=False)

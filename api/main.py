@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 
 from core.errors import AppError
 from core.logging import setup_logging
-from routers import auth, health, legs, trips
+from routers import auth, health, legs, options, trips
 
 setup_logging()
 
@@ -12,6 +12,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(trips.router)
 app.include_router(legs.router)
+app.include_router(options.router)
 
 
 @app.exception_handler(AppError)

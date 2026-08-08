@@ -31,7 +31,7 @@ from research.serpapi import (
     parse_hotel_booking_sources,
     parse_hotel_options,
 )
-from research.types import BookingSourcesParsed, FlightSearchParsed, HotelSearchParsed
+from research.types import BookingSourcesParsed, FlightSearchParsed, HotelSearchParsed, ParsedHotelOption
 from services import options as options_service
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "serpapi"
@@ -238,3 +238,51 @@ async def test_persist_flight_booking_post_data(db_session: AsyncSession) -> Non
     with_post = [row for row in booking_rows if row.booking_post_data is not None]
     assert len(with_post) == 2
     assert with_post[0].booking_post_data == {"post_data": "u=fixture-post-body-thai-airways"}
+
+
+def _hotel_at_price(price: int) -> ParsedHotelOption:
+    return ParsedHotelOption(
+        property_token=f"prop-{price}",
+        name=f"Hotel {price}",
+        title=f"Hotel {price}",
+        price_amount=Decimal(price),
+        currency="THB",
+        star_rating=Decimal("4"),
+        gps_lat=Decimal("7.8804"),
+        gps_lng=Decimal("98.3923"),
+        checkin_date=date(2026, 11, 10),
+        checkout_date=date(2026, 11, 14),
+        free_cancellation=False,
+        eco_certified=False,
+        amenities=[],
+    )
+
+
+@pytest.mark.asyncio
+async def test_persist_hotels_keeps_overflow_with_null_tier(
+    db_session: AsyncSession,
+) -> None:
+    leg, run = await _seed_leg(db_session)
+    hotels = [_hotel_at_price(1000 + i * 100) for i in range(11)]
+    cards = await options_service.persist_hotel_search(
+        db_session,
+        leg_id=leg.id,
+        parsed=HotelSearchParsed(
+            engine="google_hotels",
+            endpoint="hotels_search",
+            request_params={},
+            response_body={},
+            requested_currency="THB",
+            response_currency="THB",
+            currency_mismatched=False,
+            hotels=hotels,
+        ),
+        research_run_id=run.id,
+    )
+    assert len(cards) == 11
+    by_price = {int(c.base_price_amount or 0): c.tier for c in cards}
+    assert by_price[1000] == BudgetBand.budget
+    assert by_price[1800] == BudgetBand.premium
+    assert by_price[1900] is None
+    assert by_price[2000] is None
+    assert sum(1 for t in by_price.values() if t is None) == 2

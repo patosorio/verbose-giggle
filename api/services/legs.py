@@ -2,6 +2,7 @@ from datetime import date
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.errors import AppError
@@ -23,6 +24,31 @@ async def bulk_create_legs(
         if trip_result.scalar_one_or_none() is None:
             raise AppError(404, "not_found", "Trip not found")
 
+        requested_indexes = [leg_in.sequence_index for leg_in in data.legs]
+        if len(requested_indexes) != len(set(requested_indexes)):
+            raise AppError(
+                409,
+                "conflict",
+                "Duplicate sequence_index values in bulk create request",
+                details={"sequence_indexes": requested_indexes},
+            )
+
+        if requested_indexes:
+            existing_result = await session.execute(
+                select(Leg.sequence_index).where(
+                    Leg.trip_id == trip_id,
+                    Leg.sequence_index.in_(requested_indexes),
+                )
+            )
+            existing_indexes = sorted({index for index in existing_result.scalars().all()})
+            if existing_indexes:
+                raise AppError(
+                    409,
+                    "conflict",
+                    "One or more sequence_index values already exist for this trip",
+                    details={"sequence_indexes": existing_indexes},
+                )
+
         created: list[Leg] = []
         for leg_in in data.legs:
             leg = Leg(
@@ -30,6 +56,8 @@ async def bulk_create_legs(
                 sequence_index=leg_in.sequence_index,
                 origin=leg_in.origin,
                 destination=leg_in.destination,
+                origin_iata=leg_in.origin_iata,
+                destination_iata=leg_in.destination_iata,
                 start_date=leg_in.start_date,
                 end_date=leg_in.end_date,
                 nights=derive_nights(leg_in.start_date, leg_in.end_date),
@@ -46,6 +74,13 @@ async def bulk_create_legs(
     except AppError:
         await session.rollback()
         raise
+    except IntegrityError as exc:
+        await session.rollback()
+        raise AppError(
+            409,
+            "conflict",
+            "One or more sequence_index values already exist for this trip",
+        ) from exc
     except Exception:
         await session.rollback()
         raise

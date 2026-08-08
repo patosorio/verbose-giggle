@@ -66,6 +66,8 @@ class LegCreateIn(BaseModel):
     sequence_index: int
     origin: str = Field(min_length=1)
     destination: str = Field(min_length=1)
+    origin_iata: str | None = Field(default=None, min_length=3, max_length=3)
+    destination_iata: str | None = Field(default=None, min_length=3, max_length=3)
     start_date: date
     end_date: date
     filters: LegFiltersIn = Field(default_factory=LegFiltersIn)
@@ -84,6 +86,8 @@ class LegBulkCreateIn(BaseModel):
 class LegPatchIn(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
+    origin_iata: str | None = Field(default=None, min_length=3, max_length=3)
+    destination_iata: str | None = Field(default=None, min_length=3, max_length=3)
     filters: LegFiltersIn | None = None
 
     @model_validator(mode="after")
@@ -105,6 +109,8 @@ class LegOut(BaseModel):
     sequence_index: int
     origin: str
     destination: str
+    origin_iata: str | None
+    destination_iata: str | None
     start_date: date
     end_date: date
     nights: int

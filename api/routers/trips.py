@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.security import require_member, require_organizer, require_user
 from db.models import User
 from db.session import get_session
+from schemas.budget import BudgetOut
 from schemas.legs import LegBulkCreateIn, LegOut
 from schemas.travelers import TravelerCreateIn, TravelerOut
 from schemas.trips import (
@@ -18,6 +19,7 @@ from schemas.trips import (
     TripPatchIn,
     TripSummaryOut,
 )
+from services import budget as budget_service
 from services import legs as legs_service
 from services import travelers as travelers_service
 from services import trips as trips_service
@@ -150,3 +152,12 @@ async def list_legs(
 ) -> list[LegOut]:
     legs = await legs_service.list_legs(session, trip_id, limit=limit, offset=offset)
     return [LegOut.model_validate(leg) for leg in legs]
+
+
+@router.get("/{trip_id}/budget", response_model=BudgetOut)
+async def get_trip_budget(
+    trip_id: UUID,
+    _: Annotated[User, Depends(require_member)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> BudgetOut:
+    return await budget_service.get_trip_budget(session, trip_id)

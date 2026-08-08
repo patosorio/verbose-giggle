@@ -8,9 +8,8 @@ Pattern: docs/01_architecture.md §5.
 from __future__ import annotations
 
 import logging
-import re
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -25,20 +24,12 @@ from research.types import (
     ParsedActivityOption,
     ParsedCitation,
     SuggestedTiming,
+    coerce_estimated_price_amount,
 )
 
 logger = logging.getLogger(__name__)
 
 _EMIT_ACTIVITIES_TOOL_NAME = "emit_activities"
-
-# "-"- or "to"-separated numeric range after commas stripped (docs/04_build_plan.md Phase 3).
-_PRICE_RANGE_TO_RE = re.compile(
-    r"^\s*(?P<low>\d+(?:\.\d+)?)\s+to\s+(?P<high>\d+(?:\.\d+)?)\s*$",
-    re.IGNORECASE,
-)
-_PRICE_RANGE_HYPHEN_RE = re.compile(
-    r"^\s*(?P<low>\d+(?:\.\d+)?)\s*-\s*(?P<high>\d+(?:\.\d+)?)\s*$",
-)
 
 _EMIT_ACTIVITIES_TOOL: dict[str, object] = {
     "name": _EMIT_ACTIVITIES_TOOL_NAME,
@@ -146,43 +137,6 @@ class _CitationEmit(BaseModel):
     source_url: str = Field(min_length=1)
 
 
-def _midpoint_from_price_range(raw: str) -> Decimal | None:
-    """Return midpoint for a '-'/to range string, else None (not a coercible range)."""
-    cleaned = raw.replace(",", "").strip()
-    match = _PRICE_RANGE_TO_RE.match(cleaned) or _PRICE_RANGE_HYPHEN_RE.match(cleaned)
-    if match is None:
-        return None
-    low = Decimal(match.group("low"))
-    high = Decimal(match.group("high"))
-    return (low + high) / Decimal(2)
-
-
-def coerce_estimated_price_amount(value: object) -> Decimal:
-    """Coerce emit_activities price: numbers pass; '-'/'to' ranges → midpoint; else hard-fail.
-
-    docs/04_build_plan.md Phase 3 — price-range/malformed-price coercion.
-    """
-    if isinstance(value, Decimal):
-        return value
-    if isinstance(value, bool):
-        raise ValueError(f"invalid estimated_price_amount: {value!r}")
-    if isinstance(value, (int, float)):
-        return Decimal(str(value))
-    if not isinstance(value, str):
-        raise ValueError(f"invalid estimated_price_amount: {value!r}")
-
-    raw = value.strip()
-    midpoint = _midpoint_from_price_range(raw)
-    if midpoint is not None:
-        logger.info("price range coerced: %r -> %s", raw, midpoint)
-        return midpoint
-
-    try:
-        return Decimal(raw)
-    except (InvalidOperation, TypeError, ValueError) as exc:
-        raise ValueError(f"invalid estimated_price_amount: {value!r}") from exc
-
-
 class _ActivityEmit(BaseModel):
     title: str = Field(min_length=1)
     category: str = Field(min_length=1)
@@ -203,7 +157,10 @@ class _ActivityEmit(BaseModel):
     @field_validator("estimated_price_amount", mode="before")
     @classmethod
     def coerce_price(cls, value: object) -> object:
-        return coerce_estimated_price_amount(value)
+        coerced = coerce_estimated_price_amount(value)
+        if coerced is None:
+            raise ValueError("estimated_price_amount is required")
+        return coerced
 
 
 class _EmitActivitiesInput(BaseModel):

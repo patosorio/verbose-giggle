@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from core.errors import AppError
-from db.models import Trip, TripMember, User
+from db.models import Leg, OptionCard, Trip, TripMember, User
 from db.session import get_session
 
 _JWT_ALGORITHM = "HS256"
@@ -21,6 +21,14 @@ async def _get_trip_or_404(session: AsyncSession, trip_id: UUID) -> Trip:
     if trip is None:
         raise AppError(404, "not_found", "Trip not found")
     return trip
+
+
+async def _get_leg_or_404(session: AsyncSession, leg_id: UUID) -> Leg:
+    result = await session.execute(select(Leg).where(Leg.id == leg_id))
+    leg = result.scalar_one_or_none()
+    if leg is None:
+        raise AppError(404, "not_found", "Leg not found")
+    return leg
 
 
 async def _ensure_member(session: AsyncSession, trip_id: UUID, user: User) -> None:
@@ -102,4 +110,47 @@ async def require_organizer(
     trip = await _get_trip_or_404(session, trip_id)
     if trip.organizer_id != current_user.id:
         raise AppError(403, "forbidden", "Organizer access required")
+    return current_user
+
+
+async def require_leg_member(
+    leg_id: UUID,
+    current_user: Annotated[User, Depends(require_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> User:
+    leg = await _get_leg_or_404(session, leg_id)
+    await _get_trip_or_404(session, leg.trip_id)
+    await _ensure_member(session, leg.trip_id, current_user)
+    return current_user
+
+
+async def require_leg_organizer(
+    leg_id: UUID,
+    current_user: Annotated[User, Depends(require_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> User:
+    leg = await _get_leg_or_404(session, leg_id)
+    trip = await _get_trip_or_404(session, leg.trip_id)
+    if trip.organizer_id != current_user.id:
+        raise AppError(403, "forbidden", "Organizer access required")
+    return current_user
+
+
+async def _get_option_card_or_404(session: AsyncSession, option_id: UUID) -> OptionCard:
+    result = await session.execute(select(OptionCard).where(OptionCard.id == option_id))
+    card = result.scalar_one_or_none()
+    if card is None:
+        raise AppError(404, "not_found", "Option card not found")
+    return card
+
+
+async def require_option_member(
+    option_id: UUID,
+    current_user: Annotated[User, Depends(require_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> User:
+    card = await _get_option_card_or_404(session, option_id)
+    leg = await _get_leg_or_404(session, card.leg_id)
+    await _get_trip_or_404(session, leg.trip_id)
+    await _ensure_member(session, leg.trip_id, current_user)
     return current_user

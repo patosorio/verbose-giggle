@@ -3,18 +3,18 @@ from decimal import Decimal
 from pathlib import Path
 
 from db.models import BudgetBand
-from research.tiering import assign_price_tiers
+from research.tiering import assign_price_tiers, matches_home_currency
 from research.types import ParsedFlightOption
 
 
-def _flight(price: int, token: str = "t") -> ParsedFlightOption:
+def _flight(price: int, token: str = "t", currency: str = "THB") -> ParsedFlightOption:
     from datetime import datetime
 
     return ParsedFlightOption(
         booking_token=token,
         title=f"Flight {price}",
         price_amount=Decimal(price),
-        currency="THB",
+        currency=currency,
         departure_airport="BKK",
         arrival_airport="HKT",
         departure_time=datetime(2026, 11, 10, 7, 0),
@@ -26,6 +26,13 @@ def _flight(price: int, token: str = "t") -> ParsedFlightOption:
         bags_included=False,
         emissions_grams=None,
     )
+
+
+def test_matches_home_currency() -> None:
+    assert matches_home_currency("THB", "THB") is True
+    assert matches_home_currency("thb", "THB") is True
+    assert matches_home_currency("USD", "THB") is False
+    assert matches_home_currency(None, "THB") is False
 
 
 def test_tiering_nine_results_three_buckets_of_three() -> None:
@@ -66,8 +73,30 @@ def test_tiering_partial_groups() -> None:
     ]
 
 
-def test_tiering_empty() -> None:
-    assert assign_price_tiers([]) == []
+def test_partition_price_tiers_returns_overflow() -> None:
+    from research.tiering import partition_price_tiers
+
+    items = [_flight(p) for p in range(1, 12)]
+    tiered, overflow = partition_price_tiers(items)
+    assert len(tiered) == 9
+    assert [item.price_amount for _, item in tiered] == [Decimal(p) for p in range(1, 10)]
+    assert [item.price_amount for item in overflow] == [Decimal(10), Decimal(11)]
+
+
+def test_pooled_tiers_interleave_keys() -> None:
+    from research.tiering import PooledPriceItem, assign_pooled_price_tiers
+
+    pool = [
+        PooledPriceItem(key="f:100", price_amount=Decimal(100)),
+        PooledPriceItem(key="t:200", price_amount=Decimal(200)),
+        PooledPriceItem(key="f:400", price_amount=Decimal(400)),
+        PooledPriceItem(key="t:300", price_amount=Decimal(300)),
+    ]
+    tiers = assign_pooled_price_tiers(pool)
+    assert tiers["f:100"] == BudgetBand.budget
+    assert tiers["t:200"] == BudgetBand.budget
+    assert tiers["t:300"] == BudgetBand.budget
+    assert tiers["f:400"] == BudgetBand.comfort
 
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "serpapi"

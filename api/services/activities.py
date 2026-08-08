@@ -29,7 +29,7 @@ from db.models import (
     Trip,
 )
 from research.activities import ActivitiesAgentError
-from research.tiering import assign_price_tiers
+from research.tiering import matches_home_currency, partition_price_tiers
 from research.types import ActivitiesResearchParsed, ParsedActivityOption, SuggestedTiming
 
 logger = logging.getLogger(__name__)
@@ -248,9 +248,10 @@ async def _persist_activity_option(
     session: AsyncSession,
     *,
     leg_id: UUID,
-    tier: BudgetBand,
+    tier: BudgetBand | None,
     activity: ParsedActivityOption,
     raw_response_id: UUID,
+    research_run_id: UUID | None,
     retrieved_at: datetime,
 ) -> OptionCard:
     card = OptionCard(
@@ -261,6 +262,7 @@ async def _persist_activity_option(
         base_price_amount=activity.estimated_price_amount,
         currency=activity.estimated_price_currency,
         raw_response_id=raw_response_id,
+        research_run_id=research_run_id,
     )
     session.add(card)
     await session.flush()
@@ -277,7 +279,7 @@ async def _persist_activity_option(
     for citation in activity.citations:
         session.add(
             Citation(
-                activity_option_id=card.id,
+                option_card_id=card.id,
                 claim_text=citation.claim_text,
                 source_url=citation.source_url,
                 retrieved_at=retrieved_at,
@@ -334,15 +336,51 @@ async def persist_activities_research(
         trace_id=trace_id,
     )
 
+    expected = (home_currency or "XXX").upper()
+    home_activities = [
+        a
+        for a in survivors
+        if matches_home_currency(a.estimated_price_currency, expected)
+    ]
+    foreign_activities = [
+        a
+        for a in survivors
+        if not matches_home_currency(a.estimated_price_currency, expected)
+    ]
+
+    tiered, untiered_home = partition_price_tiers(home_activities)
     retrieved_at = datetime.now(UTC)
     cards: list[OptionCard] = []
-    for tier, activity in assign_price_tiers(survivors):
+    for tier, activity in tiered:
         card = await _persist_activity_option(
             session,
             leg_id=leg_id,
             tier=tier,
             activity=activity,
             raw_response_id=raw.id,
+            research_run_id=research_run_id,
+            retrieved_at=retrieved_at,
+        )
+        cards.append(card)
+    for activity in untiered_home:
+        card = await _persist_activity_option(
+            session,
+            leg_id=leg_id,
+            tier=None,
+            activity=activity,
+            raw_response_id=raw.id,
+            research_run_id=research_run_id,
+            retrieved_at=retrieved_at,
+        )
+        cards.append(card)
+    for activity in foreign_activities:
+        card = await _persist_activity_option(
+            session,
+            leg_id=leg_id,
+            tier=None,
+            activity=activity,
+            raw_response_id=raw.id,
+            research_run_id=research_run_id,
             retrieved_at=retrieved_at,
         )
         cards.append(card)

@@ -7,7 +7,8 @@ from decimal import Decimal
 
 import pytest
 
-from research.activities import coerce_estimated_price_amount, parse_emit_activities_payload
+from research.activities import parse_emit_activities_payload
+from research.types import coerce_estimated_price_amount
 
 
 def test_coerce_passes_numeric_unchanged() -> None:
@@ -17,14 +18,18 @@ def test_coerce_passes_numeric_unchanged() -> None:
     assert coerce_estimated_price_amount("1500") == Decimal("1500")
 
 
+def test_coerce_null_passes_through() -> None:
+    assert coerce_estimated_price_amount(None) is None
+
+
 def test_coerce_hyphen_range_to_midpoint(caplog: pytest.LogCaptureFixture) -> None:
-    with caplog.at_level(logging.INFO, logger="research.activities"):
+    with caplog.at_level(logging.INFO, logger="research.types"):
         assert coerce_estimated_price_amount("1,000-1,500") == Decimal("1250")
     assert "price range coerced: '1,000-1,500' -> 1250" in caplog.text
 
 
 def test_coerce_to_range_to_midpoint(caplog: pytest.LogCaptureFixture) -> None:
-    with caplog.at_level(logging.INFO, logger="research.activities"):
+    with caplog.at_level(logging.INFO, logger="research.types"):
         assert coerce_estimated_price_amount("1,500 to 1,800") == Decimal("1650")
     assert "price range coerced: '1,500 to 1,800' -> 1650" in caplog.text
 

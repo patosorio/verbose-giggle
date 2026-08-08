@@ -34,6 +34,9 @@ class Settings(BaseSettings):
 
     email_sender: str = "console"
 
+    # Phase 4 — local fire-and-forget vs Cloud Tasks (Phase 7).
+    task_queue_backend: str = "local"
+
     @field_validator("session_cookie_domain", mode="before")
     @classmethod
     def empty_domain_as_none(cls, value: object) -> object:

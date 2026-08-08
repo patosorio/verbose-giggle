@@ -1,1 +1,1 @@
-"""Deterministic SerpApi clients and activities research agent. Never writes to the DB."""
+"""Deterministic SerpApi clients and Claude research agents. Never writes to the DB."""
