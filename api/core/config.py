@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     serpapi_backoff_seconds: tuple[float, ...] = (0.5, 1.0, 2.0)
     booking_source_ttl_seconds: int = 60 * 20
 
+    # Activities research agent (docs/01_architecture.md §5). Model ID is config-only.
+    anthropic_activities_model: str = "claude-sonnet-5"
+    anthropic_web_search_max_uses: int = 5
+    anthropic_activities_max_retries: int = 1
+    anthropic_activities_max_tokens: int = 8192
+
     session_cookie_name: str = "session"
     session_cookie_max_age_seconds: int = 60 * 60 * 24 * 7
     session_cookie_httponly: bool = True
