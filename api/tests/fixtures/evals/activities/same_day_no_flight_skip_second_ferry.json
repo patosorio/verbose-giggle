@@ -1,0 +1,29 @@
+{
+  "id": "same_day_no_flight_skip_second_ferry",
+  "gate": "same_day_transfer",
+  "layer": "service_filter",
+  "description": "Second ferry-only fixture (Koh Lanta-style): skip + log, do not treat missing duration as pass-then-drop.",
+  "flight_duration_minutes": null,
+  "activities": [
+    {
+      "title": "Island Hop Departure Tour",
+      "category": "boat tour",
+      "description": "Long boat tour on departure day — kept because check is skipped.",
+      "duration_minutes": 300,
+      "estimated_price_amount": "3200",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "departure_day",
+      "citations": [
+        {
+          "claim_text": "Tour 3,200 THB.",
+          "source_url": "https://example.com/island-hop"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Island Hop Departure Tour"],
+    "dropped_titles": [],
+    "skip_logged": true
+  }
+}

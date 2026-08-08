@@ -1,0 +1,29 @@
+{
+  "id": "same_day_short_flight_arrival_kept",
+  "gate": "same_day_transfer",
+  "layer": "service_filter",
+  "description": "Flight duration ≤300 minutes — arrival_day is plausible; keep.",
+  "flight_duration_minutes": 80,
+  "activities": [
+    {
+      "title": "Same-Day Arrival Beach Walk",
+      "category": "nature",
+      "description": "Short walk after a short flight.",
+      "duration_minutes": 45,
+      "estimated_price_amount": "0",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "arrival_day",
+      "citations": [
+        {
+          "claim_text": "Beach access free.",
+          "source_url": "https://example.com/short-flight-beach"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Same-Day Arrival Beach Walk"],
+    "dropped_titles": [],
+    "skip_logged": false
+  }
+}

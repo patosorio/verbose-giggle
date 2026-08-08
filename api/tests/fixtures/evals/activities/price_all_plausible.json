@@ -1,0 +1,61 @@
+{
+  "id": "price_all_plausible",
+  "gate": "implausible_price",
+  "layer": "service_filter",
+  "description": "All prices within 10x of each other's medians — nothing dropped.",
+  "activities": [
+    {
+      "title": "Bike Rental Half Day",
+      "category": "transport",
+      "description": "Scooter rental.",
+      "duration_minutes": 240,
+      "estimated_price_amount": "400",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Rental 400 THB.",
+          "source_url": "https://example.com/bike"
+        }
+      ]
+    },
+    {
+      "title": "Massage 60min",
+      "category": "wellness",
+      "description": "Traditional massage.",
+      "duration_minutes": 60,
+      "estimated_price_amount": "700",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Massage 700 THB.",
+          "source_url": "https://example.com/massage"
+        }
+      ]
+    },
+    {
+      "title": "Night Market Food Crawl",
+      "category": "food",
+      "description": "Guided tasting.",
+      "duration_minutes": 120,
+      "estimated_price_amount": "1100",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Crawl 1,100 THB.",
+          "source_url": "https://example.com/market"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": [
+      "Bike Rental Half Day",
+      "Massage 60min",
+      "Night Market Food Crawl"
+    ],
+    "dropped_titles": []
+  }
+}

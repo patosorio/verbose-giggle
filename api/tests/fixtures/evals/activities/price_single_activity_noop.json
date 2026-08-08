@@ -1,0 +1,28 @@
+{
+  "id": "price_single_activity_noop",
+  "gate": "implausible_price",
+  "layer": "service_filter",
+  "description": "Single-activity batch: 0 same-currency peers — skip-with-log and keep (not a silent pass).",
+  "activities": [
+    {
+      "title": "Only Activity In Batch",
+      "category": "tour",
+      "description": "Lone suggestion.",
+      "duration_minutes": 90,
+      "estimated_price_amount": "99999",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Priced at 99,999 THB.",
+          "source_url": "https://example.com/only"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Only Activity In Batch"],
+    "dropped_titles": [],
+    "skip_logged": true
+  }
+}

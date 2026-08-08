@@ -1,0 +1,29 @@
+{
+  "id": "same_day_long_flight_flexible_kept",
+  "gate": "same_day_transfer",
+  "layer": "service_filter",
+  "description": "Long flight present but suggested_timing=flexible — keep (not a same-day conflict).",
+  "flight_duration_minutes": 480,
+  "activities": [
+    {
+      "title": "Flexible Spa Afternoon",
+      "category": "wellness",
+      "description": "Book any day of the stay.",
+      "duration_minutes": 90,
+      "estimated_price_amount": "1800",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Spa 1,800 THB.",
+          "source_url": "https://example.com/spa-flex"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Flexible Spa Afternoon"],
+    "dropped_titles": [],
+    "skip_logged": false
+  }
+}

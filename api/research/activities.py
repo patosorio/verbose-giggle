@@ -8,6 +8,7 @@ Pattern: docs/01_architecture.md §5.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -29,6 +30,15 @@ from research.types import (
 logger = logging.getLogger(__name__)
 
 _EMIT_ACTIVITIES_TOOL_NAME = "emit_activities"
+
+# "-"- or "to"-separated numeric range after commas stripped (docs/04_build_plan.md Phase 3).
+_PRICE_RANGE_TO_RE = re.compile(
+    r"^\s*(?P<low>\d+(?:\.\d+)?)\s+to\s+(?P<high>\d+(?:\.\d+)?)\s*$",
+    re.IGNORECASE,
+)
+_PRICE_RANGE_HYPHEN_RE = re.compile(
+    r"^\s*(?P<low>\d+(?:\.\d+)?)\s*-\s*(?P<high>\d+(?:\.\d+)?)\s*$",
+)
 
 _EMIT_ACTIVITIES_TOOL: dict[str, object] = {
     "name": _EMIT_ACTIVITIES_TOOL_NAME,
@@ -58,7 +68,12 @@ _EMIT_ACTIVITIES_TOOL: dict[str, object] = {
                         },
                         "description": {
                             "type": "string",
-                            "description": "What the activity is and why it fits this destination.",
+                            "description": (
+                                "What the activity is and why it fits this destination. "
+                                "If the source lists a price range, disclose that range here "
+                                "(e.g. 'typically 1,000–1,500 THB') — never put a range in "
+                                "estimated_price_amount."
+                            ),
                         },
                         "duration_minutes": {
                             "type": ["integer", "null"],
@@ -67,7 +82,10 @@ _EMIT_ACTIVITIES_TOOL: dict[str, object] = {
                         "estimated_price_amount": {
                             "type": ["number", "string"],
                             "description": (
-                                "Price exactly as shown on the source page — do not convert currencies."
+                                "A single numeric point estimate for the price (no currency "
+                                "symbol, no commas, no ranges). If the source shows a range, "
+                                "put one representative number here and disclose the full "
+                                "range in description instead. Do not convert currencies."
                             ),
                         },
                         "estimated_price_currency": {
@@ -128,6 +146,43 @@ class _CitationEmit(BaseModel):
     source_url: str = Field(min_length=1)
 
 
+def _midpoint_from_price_range(raw: str) -> Decimal | None:
+    """Return midpoint for a '-'/to range string, else None (not a coercible range)."""
+    cleaned = raw.replace(",", "").strip()
+    match = _PRICE_RANGE_TO_RE.match(cleaned) or _PRICE_RANGE_HYPHEN_RE.match(cleaned)
+    if match is None:
+        return None
+    low = Decimal(match.group("low"))
+    high = Decimal(match.group("high"))
+    return (low + high) / Decimal(2)
+
+
+def coerce_estimated_price_amount(value: object) -> Decimal:
+    """Coerce emit_activities price: numbers pass; '-'/'to' ranges → midpoint; else hard-fail.
+
+    docs/04_build_plan.md Phase 3 — price-range/malformed-price coercion.
+    """
+    if isinstance(value, Decimal):
+        return value
+    if isinstance(value, bool):
+        raise ValueError(f"invalid estimated_price_amount: {value!r}")
+    if isinstance(value, (int, float)):
+        return Decimal(str(value))
+    if not isinstance(value, str):
+        raise ValueError(f"invalid estimated_price_amount: {value!r}")
+
+    raw = value.strip()
+    midpoint = _midpoint_from_price_range(raw)
+    if midpoint is not None:
+        logger.info("price range coerced: %r -> %s", raw, midpoint)
+        return midpoint
+
+    try:
+        return Decimal(raw)
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError(f"invalid estimated_price_amount: {value!r}") from exc
+
+
 class _ActivityEmit(BaseModel):
     title: str = Field(min_length=1)
     category: str = Field(min_length=1)
@@ -148,12 +203,7 @@ class _ActivityEmit(BaseModel):
     @field_validator("estimated_price_amount", mode="before")
     @classmethod
     def coerce_price(cls, value: object) -> object:
-        if isinstance(value, Decimal):
-            return value
-        try:
-            return Decimal(str(value))
-        except (InvalidOperation, TypeError, ValueError) as exc:
-            raise ValueError(f"invalid estimated_price_amount: {value!r}") from exc
+        return coerce_estimated_price_amount(value)
 
 
 class _EmitActivitiesInput(BaseModel):
@@ -170,9 +220,16 @@ def _message_to_dict(message: Message) -> dict[str, object]:
     return message.model_dump(mode="json")
 
 
-def _research_prompt(*, destination: str, start_date: date, end_date: date, nights: int) -> str:
-    # Destination/dates are structured wizard input but still untrusted for prompt injection
-    # (.cursorrules §7) — wrap in delimiters rather than interpolating raw.
+def _research_prompt(
+    *,
+    destination: str,
+    start_date: date,
+    end_date: date,
+    nights: int,
+    home_currency: str,
+) -> str:
+    # Destination/dates/currency are structured wizard input but still untrusted for
+    # prompt injection (.cursorrules §7) — wrap in delimiters rather than interpolating raw.
     return (
         "You are researching real, bookable or visit-worthy activities for one stop on a "
         "group trip. Use web_search to gather current sources.\n\n"
@@ -182,7 +239,11 @@ def _research_prompt(*, destination: str, start_date: date, end_date: date, nigh
         "- Prefer sources that state a concrete price and currency.\n"
         "- Record source URLs and the specific claims they support — a later extraction "
         "step will need citations.\n"
-        "- Do NOT convert currencies; keep prices exactly as each source states them.\n\n"
+        "- Do NOT convert currencies; keep prices exactly as each source states them.\n"
+        "- When a source states multiple currencies, prefer quoting the price in the trip "
+        "home currency "
+        f"<home_currency>{home_currency}</home_currency> "
+        "(preference among currencies already offered — never convert).\n\n"
         f"Destination: <destination>{destination}</destination>\n"
         f"Stay: <start_date>{start_date.isoformat()}</start_date> to "
         f"<end_date>{end_date.isoformat()}</end_date> "
@@ -197,8 +258,10 @@ def _extraction_prompt() -> str:
         "Rules:\n"
         "- Aim for 6–9 distinct activities spanning a price range.\n"
         "- Every activity MUST have at least one citation (claim_text + source_url).\n"
-        "- estimated_price_amount and estimated_price_currency must match the source page "
-        "exactly — never convert currencies.\n"
+        "- estimated_price_amount must be a single numeric point estimate (no ranges, "
+        "no currency symbols). If the source shows a range, put one representative number "
+        "in estimated_price_amount and disclose the full range in description.\n"
+        "- estimated_price_currency must match the source — never convert currencies.\n"
         "- title is a concise display label for a card UI.\n"
         "- suggested_timing must be one of: arrival_day, departure_day, flexible.\n"
         "- duration_minutes may be null when unknown.\n"
@@ -210,7 +273,8 @@ def _correction_prompt(error_message: str) -> str:
         "Your previous emit_activities tool call was invalid and was rejected.\n"
         f"Validation error: <validation_error>{error_message}</validation_error>\n"
         "Call emit_activities again with a corrected payload. Every activity still needs "
-        "≥1 citation. Do not convert currencies."
+        "≥1 citation. estimated_price_amount must be a single number (put any source range "
+        "in description). Do not convert currencies."
     )
 
 
@@ -352,23 +416,27 @@ async def research_activities(
     start_date: date,
     end_date: date,
     nights: int,
+    home_currency: str,
     leg_id: UUID | None = None,
     trace_id: str | None = None,
 ) -> ActivitiesResearchParsed:
     """Run the two-call activities agent. Pure — never writes to the database."""
     client = _client()
+    currency = home_currency.strip().upper()
     research_user_prompt = _research_prompt(
         destination=destination,
         start_date=start_date,
         end_date=end_date,
         nights=nights,
+        home_currency=currency,
     )
 
     logger.info(
-        "activities_research_start trace_id=%s leg_id=%s destination=%s",
+        "activities_research_start trace_id=%s leg_id=%s destination=%s home_currency=%s",
         trace_id,
         leg_id,
         destination,
+        currency,
     )
     research_message = await _research_call(
         client,
@@ -424,6 +492,7 @@ async def research_activities(
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
         "nights": nights,
+        "home_currency": currency,
         "leg_id": str(leg_id) if leg_id else None,
         "model": settings.anthropic_activities_model,
         "web_search_max_uses": settings.anthropic_web_search_max_uses,

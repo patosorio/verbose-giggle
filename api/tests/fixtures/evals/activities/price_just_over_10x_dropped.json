@@ -1,0 +1,57 @@
+{
+  "id": "price_just_over_10x_dropped",
+  "gate": "implausible_price",
+  "layer": "service_filter",
+  "description": "Just over 10x the peer median — must drop; rest of batch kept.",
+  "activities": [
+    {
+      "title": "Peer Mid A",
+      "category": "tour",
+      "description": "Baseline.",
+      "duration_minutes": 60,
+      "estimated_price_amount": "1000",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "1000 THB.",
+          "source_url": "https://example.com/mid-a"
+        }
+      ]
+    },
+    {
+      "title": "Peer Mid B",
+      "category": "tour",
+      "description": "Baseline.",
+      "duration_minutes": 60,
+      "estimated_price_amount": "1000",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "1000 THB.",
+          "source_url": "https://example.com/mid-b"
+        }
+      ]
+    },
+    {
+      "title": "Just Over Ten Times",
+      "category": "tour",
+      "description": "10001 is >10x of peer median 1000.",
+      "duration_minutes": 60,
+      "estimated_price_amount": "10001",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "10,001 THB.",
+          "source_url": "https://example.com/over-ten"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Peer Mid A", "Peer Mid B"],
+    "dropped_titles": ["Just Over Ten Times"]
+  }
+}

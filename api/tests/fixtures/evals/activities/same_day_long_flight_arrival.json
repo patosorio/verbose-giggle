@@ -1,0 +1,44 @@
+{
+  "id": "same_day_long_flight_arrival",
+  "gate": "same_day_transfer",
+  "layer": "service_filter",
+  "description": "FlightOption present with duration >300; arrival_day activity must drop.",
+  "flight_duration_minutes": 420,
+  "activities": [
+    {
+      "title": "Arrival-Day Snorkel",
+      "category": "water sports",
+      "description": "Snorkel intended for arrival day.",
+      "duration_minutes": 180,
+      "estimated_price_amount": "1500",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "arrival_day",
+      "citations": [
+        {
+          "claim_text": "Tour 1,500 THB.",
+          "source_url": "https://example.com/arrival-snorkel"
+        }
+      ]
+    },
+    {
+      "title": "Flexible Temple Visit",
+      "category": "culture",
+      "description": "Can be done any day.",
+      "duration_minutes": 90,
+      "estimated_price_amount": "200",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Entry 200 THB.",
+          "source_url": "https://example.com/temple-flex"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Flexible Temple Visit"],
+    "dropped_titles": ["Arrival-Day Snorkel"],
+    "skip_logged": false
+  }
+}

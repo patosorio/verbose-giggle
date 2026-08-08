@@ -1,0 +1,76 @@
+{
+  "id": "price_outlier_low",
+  "gate": "implausible_price",
+  "layer": "service_filter",
+  "description": "One activity <1/10th the median of the other activities — dropped; peers kept.",
+  "activities": [
+    {
+      "title": "Dive Certification Weekend",
+      "category": "diving",
+      "description": "Open-water certification.",
+      "duration_minutes": 960,
+      "estimated_price_amount": "18000",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Course from 18,000 THB.",
+          "source_url": "https://example.com/dive-cert"
+        }
+      ]
+    },
+    {
+      "title": "Full-Day Liveaboard Snorkel",
+      "category": "boat tour",
+      "description": "Boat day to outer islands.",
+      "duration_minutes": 480,
+      "estimated_price_amount": "4500",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Trip listed at 4,500 THB.",
+          "source_url": "https://example.com/liveaboard"
+        }
+      ]
+    },
+    {
+      "title": "Spa Half Day",
+      "category": "wellness",
+      "description": "Resort spa package.",
+      "duration_minutes": 180,
+      "estimated_price_amount": "3500",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Package 3,500 THB.",
+          "source_url": "https://example.com/spa"
+        }
+      ]
+    },
+    {
+      "title": "Typo Free Sticky-Rice Sample",
+      "category": "food",
+      "description": "Implausibly tiny price vs the batch median.",
+      "duration_minutes": 15,
+      "estimated_price_amount": "5",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Sample listed at 5 THB.",
+          "source_url": "https://example.com/sticky-rice"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": [
+      "Dive Certification Weekend",
+      "Full-Day Liveaboard Snorkel",
+      "Spa Half Day"
+    ],
+    "dropped_titles": ["Typo Free Sticky-Rice Sample"]
+  }
+}

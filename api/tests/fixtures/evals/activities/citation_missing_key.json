@@ -1,0 +1,23 @@
+{
+  "id": "citation_missing_key",
+  "gate": "missing_citation",
+  "layer": "research_parse",
+  "description": "Deliberately broken: citations key omitted entirely — must fail per-activity validation.",
+  "emit_payload": {
+    "activities": [
+      {
+        "title": "Temple Visit Without Citations Key",
+        "category": "culture",
+        "description": "Visit a local temple.",
+        "duration_minutes": 90,
+        "estimated_price_amount": 200,
+        "estimated_price_currency": "THB",
+        "suggested_timing": "flexible"
+      }
+    ]
+  },
+  "expect": {
+    "kept_titles": [],
+    "dropped_titles": ["Temple Visit Without Citations Key"]
+  }
+}

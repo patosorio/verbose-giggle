@@ -1,0 +1,93 @@
+{
+  "id": "price_mixed_currency_no_cross_compare",
+  "gate": "implausible_price",
+  "layer": "service_filter",
+  "description": "USD amounts must not be compared to a THB median. THB outlier still drops within its bucket; lone USD activity skips-with-log and is kept.",
+  "activities": [
+    {
+      "title": "THB Street Food Walk",
+      "category": "food",
+      "description": "Guided tasting.",
+      "duration_minutes": 120,
+      "estimated_price_amount": "900",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "900 THB.",
+          "source_url": "https://example.com/thb-food"
+        }
+      ]
+    },
+    {
+      "title": "THB Cooking Class",
+      "category": "food",
+      "description": "Half-day class.",
+      "duration_minutes": 240,
+      "estimated_price_amount": "1800",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "1,800 THB.",
+          "source_url": "https://example.com/thb-cook"
+        }
+      ]
+    },
+    {
+      "title": "THB Temple Pass",
+      "category": "culture",
+      "description": "Temple entry.",
+      "duration_minutes": 90,
+      "estimated_price_amount": "500",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "500 THB.",
+          "source_url": "https://example.com/thb-temple"
+        }
+      ]
+    },
+    {
+      "title": "THB Private Helicopter Day",
+      "category": "luxury",
+      "description": "Within-THB outlier (>10x peer median).",
+      "duration_minutes": 360,
+      "estimated_price_amount": "250000",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "250,000 THB.",
+          "source_url": "https://example.com/thb-heli"
+        }
+      ]
+    },
+    {
+      "title": "USD Private Boat Day",
+      "category": "boat tour",
+      "description": "Would look tiny vs THB median if cross-compared; must skip-with-log instead.",
+      "duration_minutes": 480,
+      "estimated_price_amount": "165",
+      "estimated_price_currency": "USD",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "$165.",
+          "source_url": "https://example.com/usd-boat"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": [
+      "THB Street Food Walk",
+      "THB Cooking Class",
+      "THB Temple Pass",
+      "USD Private Boat Day"
+    ],
+    "dropped_titles": ["THB Private Helicopter Day"],
+    "skip_logged": true
+  }
+}

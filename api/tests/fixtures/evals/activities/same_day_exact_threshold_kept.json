@@ -1,0 +1,29 @@
+{
+  "id": "same_day_exact_threshold_kept",
+  "gate": "same_day_transfer",
+  "layer": "service_filter",
+  "description": "Flight duration exactly 300 — threshold is >, so arrival_day kept.",
+  "flight_duration_minutes": 300,
+  "activities": [
+    {
+      "title": "Arrival At Exact Threshold",
+      "category": "tour",
+      "description": "Borderline duration.",
+      "duration_minutes": 60,
+      "estimated_price_amount": "500",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "arrival_day",
+      "citations": [
+        {
+          "claim_text": "500 THB.",
+          "source_url": "https://example.com/threshold"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Arrival At Exact Threshold"],
+    "dropped_titles": [],
+    "skip_logged": false
+  }
+}

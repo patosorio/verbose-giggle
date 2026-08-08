@@ -57,28 +57,42 @@ def drop_missing_citations(
 def drop_implausible_prices(
     activities: list[ParsedActivityOption],
 ) -> list[ParsedActivityOption]:
-    """Drop activities whose price is >10x or <1/10th the median of the *other* activities.
+    """Drop activities whose price is >10x or <1/10th the median of *other* same-currency peers.
 
     Per docs/04_build_plan.md Phase 3 — exclude self from the baseline median.
+    Medians are never cross-currency (architecture: no FX conversion). When fewer
+    than 2 other activities share this activity's currency, skip and log — do not
+    silently pass or fall back to a mixed-currency comparison.
     """
-    if len(activities) < 2:
-        return list(activities)
-
     kept: list[ParsedActivityOption] = []
     for index, activity in enumerate(activities):
+        currency = activity.estimated_price_currency.upper()
         others = [
             other.estimated_price_amount
             for j, other in enumerate(activities)
-            if j != index
+            if j != index and other.estimated_price_currency.upper() == currency
         ]
+        if len(others) < 2:
+            logger.info(
+                "implausible-price check skipped, fewer than 2 same-currency peers "
+                "title=%s currency=%s peer_count=%s",
+                activity.title,
+                currency,
+                len(others),
+            )
+            kept.append(activity)
+            continue
+
         median_price = Decimal(str(statistics.median(others)))
         if median_price == 0:
             # Avoid divide-by-zero; a zero median among peers is itself pathological — keep
             # only peers that are also zero rather than inventing an absolute bound.
             if activity.estimated_price_amount != 0:
                 logger.info(
-                    "activities_drop_implausible_price title=%s amount=%s median_others=0",
+                    "activities_drop_implausible_price title=%s currency=%s "
+                    "amount=%s median_others=0",
                     activity.title,
+                    currency,
                     activity.estimated_price_amount,
                 )
                 continue
@@ -88,8 +102,10 @@ def drop_implausible_prices(
         ratio = activity.estimated_price_amount / median_price
         if ratio > 10 or ratio < Decimal("0.1"):
             logger.info(
-                "activities_drop_implausible_price title=%s amount=%s median_others=%s ratio=%s",
+                "activities_drop_implausible_price title=%s currency=%s "
+                "amount=%s median_others=%s ratio=%s",
                 activity.title,
+                currency,
                 activity.estimated_price_amount,
                 median_price,
                 ratio,

@@ -1,0 +1,44 @@
+{
+  "id": "same_day_long_flight_departure",
+  "gate": "same_day_transfer",
+  "layer": "service_filter",
+  "description": "FlightOption present with duration >300; departure_day activity must drop.",
+  "flight_duration_minutes": 360,
+  "activities": [
+    {
+      "title": "Departure-Day Cooking Class",
+      "category": "food",
+      "description": "Class on departure day.",
+      "duration_minutes": 240,
+      "estimated_price_amount": "2200",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "departure_day",
+      "citations": [
+        {
+          "claim_text": "Class 2,200 THB.",
+          "source_url": "https://example.com/depart-cook"
+        }
+      ]
+    },
+    {
+      "title": "Mid-Stay Bike Ride",
+      "category": "nature",
+      "description": "Flexible timing.",
+      "duration_minutes": 120,
+      "estimated_price_amount": "600",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Ride 600 THB.",
+          "source_url": "https://example.com/bike-flex"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Mid-Stay Bike Ride"],
+    "dropped_titles": ["Departure-Day Cooking Class"],
+    "skip_logged": false
+  }
+}

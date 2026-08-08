@@ -1,0 +1,24 @@
+{
+  "id": "citation_empty_array",
+  "gate": "missing_citation",
+  "layer": "research_parse",
+  "description": "Deliberately broken: one activity with citations: [] must be dropped by schema validation.",
+  "emit_payload": {
+    "activities": [
+      {
+        "title": "Citation-Free Snorkel Claim",
+        "category": "water sports",
+        "description": "A half-day snorkel trip with no supporting sources.",
+        "duration_minutes": 180,
+        "estimated_price_amount": 1500,
+        "estimated_price_currency": "THB",
+        "suggested_timing": "flexible",
+        "citations": []
+      }
+    ]
+  },
+  "expect": {
+    "kept_titles": [],
+    "dropped_titles": ["Citation-Free Snorkel Claim"]
+  }
+}

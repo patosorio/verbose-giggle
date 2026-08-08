@@ -1,0 +1,54 @@
+{
+  "id": "citation_mixed_batch",
+  "gate": "missing_citation",
+  "layer": "research_parse",
+  "description": "One citation-free activity in a batch of otherwise valid ones — only the broken item drops.",
+  "emit_payload": {
+    "activities": [
+      {
+        "title": "Kayak Sunset Tour",
+        "category": "boat tour",
+        "description": "Guided kayak at sunset.",
+        "duration_minutes": 120,
+        "estimated_price_amount": 1200,
+        "estimated_price_currency": "THB",
+        "suggested_timing": "flexible",
+        "citations": [
+          {
+            "claim_text": "Kayak tour listed at 1,200 THB per person.",
+            "source_url": "https://example.com/kayak-sunset"
+          }
+        ]
+      },
+      {
+        "title": "Uncited Cooking Class",
+        "category": "food",
+        "description": "Thai cooking class with market visit.",
+        "duration_minutes": 240,
+        "estimated_price_amount": 2500,
+        "estimated_price_currency": "THB",
+        "suggested_timing": "flexible",
+        "citations": []
+      },
+      {
+        "title": "Island Viewpoint Walk",
+        "category": "nature",
+        "description": "Short hike to a viewpoint.",
+        "duration_minutes": 60,
+        "estimated_price_amount": 0,
+        "estimated_price_currency": "THB",
+        "suggested_timing": "flexible",
+        "citations": [
+          {
+            "claim_text": "Viewpoint trail is free to access.",
+            "source_url": "https://example.com/viewpoint"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "kept_titles": ["Kayak Sunset Tour", "Island Viewpoint Walk"],
+    "dropped_titles": ["Uncited Cooking Class"]
+  }
+}

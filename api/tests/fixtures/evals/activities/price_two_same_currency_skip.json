@@ -1,0 +1,43 @@
+{
+  "id": "price_two_same_currency_skip",
+  "gate": "implausible_price",
+  "layer": "service_filter",
+  "description": "Two same-currency activities → each has only 1 peer (<2). Skip-with-log both; keep even when 100x apart. No silent pass, no cross-currency fallback.",
+  "activities": [
+    {
+      "title": "Cheap Massage",
+      "category": "wellness",
+      "description": "Budget massage.",
+      "duration_minutes": 60,
+      "estimated_price_amount": "300",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "300 THB.",
+          "source_url": "https://example.com/cheap-massage"
+        }
+      ]
+    },
+    {
+      "title": "Hundred-X Spa Package",
+      "category": "wellness",
+      "description": "Would drop under a 1-peer median rule; must skip instead.",
+      "duration_minutes": 180,
+      "estimated_price_amount": "30000",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "30,000 THB.",
+          "source_url": "https://example.com/spa-package"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Cheap Massage", "Hundred-X Spa Package"],
+    "dropped_titles": [],
+    "skip_logged": true
+  }
+}

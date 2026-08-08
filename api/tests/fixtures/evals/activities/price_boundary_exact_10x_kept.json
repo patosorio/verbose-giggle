@@ -1,0 +1,57 @@
+{
+  "id": "price_boundary_exact_10x_kept",
+  "gate": "implausible_price",
+  "layer": "service_filter",
+  "description": "Exactly 10x the median of others — ratio > 10 is the drop rule, so exact 10x is kept.",
+  "activities": [
+    {
+      "title": "Peer A",
+      "category": "tour",
+      "description": "Baseline peer.",
+      "duration_minutes": 60,
+      "estimated_price_amount": "1000",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "1000 THB.",
+          "source_url": "https://example.com/peer-a"
+        }
+      ]
+    },
+    {
+      "title": "Peer B",
+      "category": "tour",
+      "description": "Baseline peer.",
+      "duration_minutes": 60,
+      "estimated_price_amount": "1000",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "1000 THB.",
+          "source_url": "https://example.com/peer-b"
+        }
+      ]
+    },
+    {
+      "title": "Exact Ten Times Peer Median",
+      "category": "tour",
+      "description": "Boundary case at exactly 10x.",
+      "duration_minutes": 60,
+      "estimated_price_amount": "10000",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "10,000 THB.",
+          "source_url": "https://example.com/ten-x"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Peer A", "Peer B", "Exact Ten Times Peer Median"],
+    "dropped_titles": []
+  }
+}

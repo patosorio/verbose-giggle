@@ -1,0 +1,76 @@
+{
+  "id": "price_outlier_high",
+  "gate": "implausible_price",
+  "layer": "service_filter",
+  "description": "One activity >10x the median of the other activities — dropped; peers kept.",
+  "activities": [
+    {
+      "title": "Street Food Night Walk",
+      "category": "food",
+      "description": "Guided street-food tasting.",
+      "duration_minutes": 150,
+      "estimated_price_amount": "900",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Tour listed at 900 THB.",
+          "source_url": "https://example.com/street-food"
+        }
+      ]
+    },
+    {
+      "title": "Cooking Class Half Day",
+      "category": "food",
+      "description": "Market + kitchen class.",
+      "duration_minutes": 240,
+      "estimated_price_amount": "1800",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Class listed at 1,800 THB.",
+          "source_url": "https://example.com/cooking"
+        }
+      ]
+    },
+    {
+      "title": "Temple Day Pass",
+      "category": "culture",
+      "description": "Temple complex entry.",
+      "duration_minutes": 120,
+      "estimated_price_amount": "500",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Entry 500 THB.",
+          "source_url": "https://example.com/temple"
+        }
+      ]
+    },
+    {
+      "title": "Private Helicopter Island Hop",
+      "category": "luxury",
+      "description": "Charter helicopter day.",
+      "duration_minutes": 360,
+      "estimated_price_amount": "250000",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Charter from 250,000 THB.",
+          "source_url": "https://example.com/heli"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": [
+      "Street Food Night Walk",
+      "Cooking Class Half Day",
+      "Temple Day Pass"
+    ],
+    "dropped_titles": ["Private Helicopter Island Hop"]
+  }
+}

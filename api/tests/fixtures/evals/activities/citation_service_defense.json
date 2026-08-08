@@ -1,0 +1,37 @@
+{
+  "id": "citation_service_defense",
+  "gate": "missing_citation",
+  "layer": "service_filter",
+  "description": "Defense-in-depth: ParsedActivityOption with empty citations list is dropped by services.",
+  "activities": [
+    {
+      "title": "Parsed But Citation-Free",
+      "category": "tour",
+      "description": "Somehow reached the service layer with zero citations.",
+      "duration_minutes": 60,
+      "estimated_price_amount": "500",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": []
+    },
+    {
+      "title": "Cited Beach Walk",
+      "category": "nature",
+      "description": "Coastal walk with a cited free entry.",
+      "duration_minutes": 45,
+      "estimated_price_amount": "0",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "flexible",
+      "citations": [
+        {
+          "claim_text": "Beach access is free.",
+          "source_url": "https://example.com/beach"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Cited Beach Walk"],
+    "dropped_titles": ["Parsed But Citation-Free"]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "citation_valid_control",
+  "gate": "missing_citation",
+  "layer": "research_parse",
+  "description": "Positive control: activity with ≥1 citation survives research parse.",
+  "emit_payload": {
+    "activities": [
+      {
+        "title": "Muay Thai Intro Class",
+        "category": "sports",
+        "description": "Beginner Muay Thai session.",
+        "duration_minutes": 90,
+        "estimated_price_amount": 800,
+        "estimated_price_currency": "THB",
+        "suggested_timing": "flexible",
+        "citations": [
+          {
+            "claim_text": "Intro class priced at 800 THB.",
+            "source_url": "https://example.com/muay-thai"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "kept_titles": ["Muay Thai Intro Class"],
+    "dropped_titles": []
+  }
+}

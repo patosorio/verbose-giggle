@@ -1,0 +1,44 @@
+{
+  "id": "same_day_no_flight_skip",
+  "gate": "same_day_transfer",
+  "layer": "service_filter",
+  "description": "No FlightOption (ferry-only leg): skip check, log it, keep arrival_day activities — not a silent pass.",
+  "flight_duration_minutes": null,
+  "activities": [
+    {
+      "title": "Ferry-Leg Arrival Kayak",
+      "category": "boat tour",
+      "description": "Would look like a conflict if we falsely assumed duration data exists.",
+      "duration_minutes": 120,
+      "estimated_price_amount": "1400",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "arrival_day",
+      "citations": [
+        {
+          "claim_text": "Kayak 1,400 THB.",
+          "source_url": "https://example.com/ferry-kayak"
+        }
+      ]
+    },
+    {
+      "title": "Ferry-Leg Departure Dinner",
+      "category": "food",
+      "description": "Departure-day dinner on a ferry leg.",
+      "duration_minutes": 90,
+      "estimated_price_amount": "800",
+      "estimated_price_currency": "THB",
+      "suggested_timing": "departure_day",
+      "citations": [
+        {
+          "claim_text": "Dinner ~800 THB.",
+          "source_url": "https://example.com/ferry-dinner"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "kept_titles": ["Ferry-Leg Arrival Kayak", "Ferry-Leg Departure Dinner"],
+    "dropped_titles": [],
+    "skip_logged": true
+  }
+}
