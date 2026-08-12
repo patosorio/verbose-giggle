@@ -329,6 +329,7 @@ export default function LegOptionsPage() {
             pinned BudgetSidebar on scroll-up. */}
         <div className="sticky top-6 flex w-full flex-col gap-5 md:w-80 md:shrink-0">
           <BudgetSidebar
+            tripId={tripId}
             budget={budget}
             legs={legsQuery.data ?? []}
             currentLeg={leg}

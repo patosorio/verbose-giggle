@@ -93,3 +93,27 @@ export function useSetBooked(tripId: string, legId: string) {
     },
   });
 }
+
+export function useAdjustLockPrice(tripId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (vars: {
+      legId: string;
+      optionCardId: string;
+      body: PriceAdjustIn;
+    }) =>
+      apiFetch<LockOut>(
+        `/legs/${vars.legId}/lock/${vars.optionCardId}/price`,
+        {
+          method: "PATCH",
+          body: vars.body,
+          token: accessToken,
+        }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trips", tripId, "budget"] });
+    },
+  });
+}
