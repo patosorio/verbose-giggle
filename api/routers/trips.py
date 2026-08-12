@@ -9,7 +9,7 @@ from db.models import User
 from db.session import get_session
 from schemas.budget import BudgetOut
 from schemas.legs import LegBulkCreateIn, LegOut
-from schemas.travelers import TravelerCreateIn, TravelerOut
+from schemas.travelers import TravelerCreateIn, TravelerOut, TravelerPatchIn
 from schemas.trips import (
     TransferOrganizerIn,
     TripCreateIn,
@@ -71,6 +71,16 @@ async def patch_trip(
     return TripOut.model_validate(trip)
 
 
+@router.delete("/{trip_id}", status_code=204, response_class=Response)
+async def delete_trip(
+    trip_id: UUID,
+    _: Annotated[User, Depends(require_organizer)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    await trips_service.delete_trip(session, trip_id)
+    return Response(status_code=204)
+
+
 @router.post("/{trip_id}/members", status_code=201, response_model=TripMemberOut)
 async def add_member(
     trip_id: UUID,
@@ -117,6 +127,16 @@ async def create_traveler(
     return TravelerOut.model_validate(traveler)
 
 
+@router.get("/{trip_id}/members", response_model=list[TripMemberOut])
+async def list_trip_members(
+    trip_id: UUID,
+    _: Annotated[User, Depends(require_member)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[TripMemberOut]:
+    members = await trips_service.list_members(session, trip_id)
+    return [TripMemberOut.model_validate(member) for member in members]
+
+
 @router.get("/{trip_id}/travelers", response_model=list[TravelerOut])
 async def list_travelers(
     trip_id: UUID,
@@ -129,6 +149,35 @@ async def list_travelers(
         session, trip_id, limit=limit, offset=offset
     )
     return [TravelerOut.model_validate(traveler) for traveler in travelers]
+
+
+@router.patch("/{trip_id}/travelers/{traveler_id}", response_model=TravelerOut)
+async def update_traveler(
+    trip_id: UUID,
+    traveler_id: UUID,
+    body: TravelerPatchIn,
+    _: Annotated[User, Depends(require_organizer)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> TravelerOut:
+    traveler = await travelers_service.update_traveler(
+        session, trip_id, traveler_id, body
+    )
+    return TravelerOut.model_validate(traveler)
+
+
+@router.delete(
+    "/{trip_id}/travelers/{traveler_id}",
+    status_code=204,
+    response_class=Response,
+)
+async def delete_traveler(
+    trip_id: UUID,
+    traveler_id: UUID,
+    _: Annotated[User, Depends(require_organizer)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    await travelers_service.delete_traveler(session, trip_id, traveler_id)
+    return Response(status_code=204)
 
 
 @router.post("/{trip_id}/legs:bulk", status_code=201, response_model=list[LegOut])

@@ -212,3 +212,30 @@ class TransportResearchParsed:
     options: list[ParsedTransportOption]
     extraction_failed: bool
     extraction_error: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedImportedOption:
+    title: str
+    description: str | None
+    category_hint: str | None
+    estimated_price_amount: Decimal | None
+    estimated_price_currency: str | None
+    price_supporting_quote: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ImportedOptionParsed:
+    """Raw fetch + Claude URL-extract payload plus schema-valid imported option fields.
+
+    research/ never writes to the DB. response_body holds fetched page text and the
+    extraction tool-call output (docs/01_architecture.md §4.4) so services can persist
+    RawApiResponse first — including on extraction failure.
+    """
+
+    request_params: dict[str, object]
+    response_body: dict[str, object]
+    source_url: str
+    option: ParsedImportedOption | None
+    extraction_failed: bool
+    extraction_error: str | None

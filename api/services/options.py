@@ -14,6 +14,7 @@ from db.models import (
     Citation,
     FlightOption,
     HotelOption,
+    ImportedOption,
     Leg,
     Lock,
     OptionCard,
@@ -44,6 +45,7 @@ from schemas.options import (
     ActivityOptionOut,
     FlightOptionOut,
     HotelOptionOut,
+    ImportedOptionOut,
     OptionCardOut,
     ReactionSummaryOut,
     TransportOptionOut,
@@ -207,6 +209,7 @@ async def persist_hotel_search(
     leg_id: UUID,
     parsed: HotelSearchParsed,
     research_run_id: UUID | None,
+    room_label: str | None = None,
 ) -> list[OptionCard]:
     raw = await _write_raw_response(
         session,
@@ -233,6 +236,7 @@ async def persist_hotel_search(
             hotel=hotel,
             raw_response_id=raw.id,
             research_run_id=research_run_id,
+            room_label=room_label,
         )
         cards.append(card)
     for hotel in untiered_home:
@@ -243,6 +247,7 @@ async def persist_hotel_search(
             hotel=hotel,
             raw_response_id=raw.id,
             research_run_id=research_run_id,
+            room_label=room_label,
         )
         cards.append(card)
     for hotel in foreign_hotels:
@@ -253,6 +258,7 @@ async def persist_hotel_search(
             hotel=hotel,
             raw_response_id=raw.id,
             research_run_id=research_run_id,
+            room_label=room_label,
         )
         cards.append(card)
     await session.commit()
@@ -344,6 +350,7 @@ async def _persist_hotel_option(
     hotel: ParsedHotelOption,
     raw_response_id: UUID,
     research_run_id: UUID | None,
+    room_label: str | None = None,
 ) -> OptionCard:
     card = OptionCard(
         leg_id=leg_id,
@@ -370,6 +377,7 @@ async def _persist_hotel_option(
             free_cancellation=hotel.free_cancellation,
             eco_certified=hotel.eco_certified,
             amenities=hotel.amenities,
+            room_label=room_label,
         )
     )
     return card
@@ -444,7 +452,7 @@ async def list_options_for_leg(
     option_type: OptionType | None = None,
     tier: BudgetBand | None = None,
 ) -> list[OptionCardOut]:
-    """Active options for a leg, plus the actively-locked card even if superseded."""
+    """Active options for a leg, plus any actively-locked cards even if superseded."""
     leg = await session.get(Leg, leg_id)
     if leg is None:
         raise AppError(404, "not_found", "Leg not found")
@@ -462,11 +470,11 @@ async def list_options_for_leg(
             Lock.unlocked_at.is_(None),
         )
     )
-    locked_card_id = locked_result.scalar_one_or_none()
+    locked_card_ids = list(locked_result.scalars().all())
 
     visibility = OptionCard.superseded_at.is_(None)
-    if locked_card_id is not None:
-        visibility = or_(visibility, OptionCard.id == locked_card_id)
+    if locked_card_ids:
+        visibility = or_(visibility, OptionCard.id.in_(locked_card_ids))
 
     conditions = [OptionCard.leg_id == leg_id, visibility]
     if option_type is not None:
@@ -494,6 +502,7 @@ async def list_options_for_leg(
     hotel_ids = [c.id for c in cards if c.option_type == OptionType.hotel]
     activity_ids = [c.id for c in cards if c.option_type == OptionType.activity]
     transport_ids = [c.id for c in cards if c.option_type == OptionType.transport]
+    imported_ids = [c.id for c in cards if c.option_type == OptionType.imported]
 
     flights: dict[UUID, FlightOption] = {}
     if flight_ids:
@@ -523,6 +532,13 @@ async def list_options_for_leg(
         )
         transports = {row.option_card_id: row for row in result.scalars().all()}
 
+    imported: dict[UUID, ImportedOption] = {}
+    if imported_ids:
+        result = await session.execute(
+            select(ImportedOption).where(ImportedOption.option_card_id.in_(imported_ids))
+        )
+        imported = {row.option_card_id: row for row in result.scalars().all()}
+
     out: list[OptionCardOut] = []
     for card in cards:
         summary = summaries[card.id]
@@ -537,6 +553,10 @@ async def list_options_for_leg(
                     title=card.title,
                     base_price_amount=card.base_price_amount,
                     currency=card.currency,
+                    original_price_amount=card.original_price_amount,
+                    original_currency=card.original_currency,
+                    fx_rate=card.fx_rate,
+                    fx_rate_as_of=card.fx_rate_as_of,
                     reaction_summary=summary,
                     booking_token=detail.booking_token,
                     departure_airport=detail.departure_airport,
@@ -562,6 +582,10 @@ async def list_options_for_leg(
                     title=card.title,
                     base_price_amount=card.base_price_amount,
                     currency=card.currency,
+                    original_price_amount=card.original_price_amount,
+                    original_currency=card.original_currency,
+                    fx_rate=card.fx_rate,
+                    fx_rate_as_of=card.fx_rate_as_of,
                     reaction_summary=summary,
                     property_token=detail_h.property_token,
                     name=detail_h.name,
@@ -573,6 +597,7 @@ async def list_options_for_leg(
                     free_cancellation=detail_h.free_cancellation,
                     eco_certified=detail_h.eco_certified,
                     amenities=list(detail_h.amenities),
+                    room_label=detail_h.room_label,
                 )
             )
         elif card.option_type == OptionType.activity:
@@ -586,6 +611,10 @@ async def list_options_for_leg(
                     title=card.title,
                     base_price_amount=card.base_price_amount,
                     currency=card.currency,
+                    original_price_amount=card.original_price_amount,
+                    original_currency=card.original_currency,
+                    fx_rate=card.fx_rate,
+                    fx_rate_as_of=card.fx_rate_as_of,
                     reaction_summary=summary,
                     category=detail_a.category,
                     description=detail_a.description,
@@ -605,6 +634,10 @@ async def list_options_for_leg(
                     title=card.title,
                     base_price_amount=card.base_price_amount,
                     currency=card.currency,
+                    original_price_amount=card.original_price_amount,
+                    original_currency=card.original_currency,
+                    fx_rate=card.fx_rate,
+                    fx_rate_as_of=card.fx_rate_as_of,
                     reaction_summary=summary,
                     mode=detail_t.mode,
                     operator_name=detail_t.operator_name,
@@ -612,6 +645,28 @@ async def list_options_for_leg(
                     arrival_point=detail_t.arrival_point,
                     estimated_duration_minutes=detail_t.estimated_duration_minutes,
                     booking_url=detail_t.booking_url,
+                )
+            )
+        elif card.option_type == OptionType.imported:
+            detail_i = imported.get(card.id)
+            if detail_i is None:
+                continue
+            out.append(
+                ImportedOptionOut(
+                    id=card.id,
+                    tier=card.tier,
+                    title=card.title,
+                    base_price_amount=card.base_price_amount,
+                    currency=card.currency,
+                    original_price_amount=card.original_price_amount,
+                    original_currency=card.original_currency,
+                    fx_rate=card.fx_rate,
+                    fx_rate_as_of=card.fx_rate_as_of,
+                    reaction_summary=summary,
+                    source_url=detail_i.source_url,
+                    extracted_title=detail_i.extracted_title,
+                    extracted_description=detail_i.extracted_description,
+                    category_hint=detail_i.category_hint,
                 )
             )
     return out

@@ -51,10 +51,11 @@ async def list_trips_for_user(
         select(Trip)
         .join(TripMember, TripMember.trip_id == Trip.id)
         .where(
+            Trip.status != TripStatus.archived,
             or_(
                 TripMember.user_id == user.id,
                 TripMember.invited_email == user.email,
-            )
+            ),
         )
         .order_by(Trip.created_at.desc())
         .limit(limit)
@@ -70,6 +71,28 @@ async def get_trip(session: AsyncSession, trip_id: UUID) -> Trip:
     if trip is None:
         raise AppError(404, "not_found", "Trip not found")
     return trip
+
+
+async def delete_trip(session: AsyncSession, trip_id: UUID) -> None:
+    """Soft-delete: archive the trip. No FK CASCADE on Trip children — hard delete
+    would fail while members/legs/options exist. Archived trips are hidden from
+    GET /trips; membership rows are left intact for audit.
+    """
+    try:
+        result = await session.execute(select(Trip).where(Trip.id == trip_id))
+        trip = result.scalar_one_or_none()
+        if trip is None:
+            raise AppError(404, "not_found", "Trip not found")
+        if trip.status == TripStatus.archived:
+            return
+        trip.status = TripStatus.archived
+        await session.commit()
+    except AppError:
+        await session.rollback()
+        raise
+    except Exception:
+        await session.rollback()
+        raise
 
 
 async def patch_trip(session: AsyncSession, trip_id: UUID, data: TripPatchIn) -> Trip:
@@ -92,6 +115,18 @@ async def patch_trip(session: AsyncSession, trip_id: UUID, data: TripPatchIn) ->
     except Exception:
         await session.rollback()
         raise
+
+
+async def list_members(session: AsyncSession, trip_id: UUID) -> list[TripMember]:
+    result = await session.execute(
+        select(TripMember).where(TripMember.trip_id == trip_id)
+    )
+    members = list(result.scalars().all())
+    # Organizer first, then everyone else in whatever order they were fetched — TripMember
+    # has no created_at to sort joined-members by, and role is a StrEnum where alphabetical
+    # DB-side ordering ("member" < "organizer") wouldn't put organizer first, so this is a
+    # small Python sort rather than an ORDER BY clause.
+    return sorted(members, key=lambda m: m.role != TripMemberRole.organizer)
 
 
 async def add_member(session: AsyncSession, trip_id: UUID, email: str) -> TripMember:

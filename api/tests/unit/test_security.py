@@ -4,7 +4,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from starlette.requests import Request
+from fastapi.security import HTTPAuthorizationCredentials
 
 from core import security
 from core.config import settings
@@ -12,24 +12,8 @@ from core.errors import AppError
 from db.models import BudgetBand, Trip, TripMember, TripMemberRole, TripStatus, User
 
 
-def _request_with_cookie(cookie_header: str | None) -> Request:
-    headers: list[tuple[bytes, bytes]] = []
-    if cookie_header is not None:
-        headers.append((b"cookie", cookie_header.encode("latin-1")))
-    scope = {
-        "type": "http",
-        "asgi": {"version": "3.0"},
-        "http_version": "1.1",
-        "method": "GET",
-        "scheme": "http",
-        "path": "/",
-        "raw_path": b"/",
-        "query_string": b"",
-        "headers": headers,
-        "client": ("127.0.0.1", 123),
-        "server": ("test", 80),
-    }
-    return Request(scope)
+def _bearer_credentials(token: str) -> HTTPAuthorizationCredentials:
+    return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
 
 def _user(*, user_id: uuid.UUID | None = None, email: str = "Pat@Example.com") -> User:
@@ -93,12 +77,11 @@ def signing_key(monkeypatch: pytest.MonkeyPatch) -> str:
 
 
 @pytest.mark.asyncio
-async def test_require_user_missing_cookie() -> None:
-    request = _request_with_cookie(None)
+async def test_require_user_missing_authorization() -> None:
     session = AsyncMock()
 
     with pytest.raises(AppError) as exc_info:
-        await security.require_user(request, session)
+        await security.require_user(None, session)
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.code == "unauthorized"
@@ -107,11 +90,11 @@ async def test_require_user_missing_cookie() -> None:
 
 @pytest.mark.asyncio
 async def test_require_user_invalid_token(signing_key: str) -> None:
-    request = _request_with_cookie(f"{settings.session_cookie_name}=not-a-jwt")
+    credentials = _bearer_credentials("not-a-jwt")
     session = AsyncMock()
 
     with pytest.raises(AppError) as exc_info:
-        await security.require_user(request, session)
+        await security.require_user(credentials, session)
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.code == "unauthorized"
@@ -122,11 +105,11 @@ async def test_require_user_invalid_token(signing_key: str) -> None:
 async def test_require_user_unknown_user(signing_key: str) -> None:
     user_id = uuid.uuid4()
     token = security.create_session_token(user_id)
-    request = _request_with_cookie(f"{settings.session_cookie_name}={token}")
+    credentials = _bearer_credentials(token)
     session = _session_returning(None)
 
     with pytest.raises(AppError) as exc_info:
-        await security.require_user(request, session)
+        await security.require_user(credentials, session)
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.code == "unauthorized"
@@ -136,10 +119,10 @@ async def test_require_user_unknown_user(signing_key: str) -> None:
 async def test_require_user_success(signing_key: str) -> None:
     user = _user()
     token = security.create_session_token(user.id)
-    request = _request_with_cookie(f"{settings.session_cookie_name}={token}")
+    credentials = _bearer_credentials(token)
     session = _session_returning(user)
 
-    resolved = await security.require_user(request, session)
+    resolved = await security.require_user(credentials, session)
 
     assert resolved.id == user.id
     assert resolved.email == user.email

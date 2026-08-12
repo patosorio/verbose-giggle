@@ -3,7 +3,8 @@ from typing import Annotated
 from uuid import UUID
 
 import jwt
-from fastapi import Depends, Request
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +14,7 @@ from db.models import Leg, OptionCard, Trip, TripMember, User
 from db.session import get_session
 
 _JWT_ALGORITHM = "HS256"
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def _get_trip_or_404(session: AsyncSession, trip_id: UUID) -> Trip:
@@ -50,7 +52,7 @@ def create_session_token(user_id: UUID) -> str:
     payload = {
         "sub": str(user_id),
         "iat": now,
-        "exp": now + timedelta(seconds=settings.session_cookie_max_age_seconds),
+        "exp": now + timedelta(seconds=settings.access_token_ttl_seconds),
     }
     return jwt.encode(payload, settings.jwt_signing_key, algorithm=_JWT_ALGORITHM)
 
@@ -77,14 +79,13 @@ def decode_session_token(token: str) -> UUID:
 
 
 async def require_user(
-    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> User:
-    raw_token = request.cookies.get(settings.session_cookie_name)
-    if raw_token is None:
+    if credentials is None:
         raise AppError(401, "unauthorized", "Authentication required")
 
-    user_id = decode_session_token(raw_token)
+    user_id = decode_session_token(credentials.credentials)
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:

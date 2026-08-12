@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from core.config import settings
 from core.errors import AppError
 from core.logging import setup_logging
 from routers import auth, health, legs, options, trips
@@ -8,6 +10,12 @@ from routers import auth, health, legs, options, trips
 setup_logging()
 
 app = FastAPI(title="Travel Agency API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(settings.cors_allowed_origins),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(trips.router)

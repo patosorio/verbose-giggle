@@ -26,3 +26,9 @@ class LockOut(BaseModel):
 
 class BookedIn(BaseModel):
     is_booked: bool
+
+
+class PriceAdjustIn(BaseModel):
+    new_price_amount: Decimal
+    new_currency: str | None = None  # None = keep the existing locked currency
+    note: str | None = None

@@ -19,15 +19,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.errors import AppError
 from db.models import (
-    AgeCategory,
     Leg,
+    LegStatus,
     Lock,
     OptionCard,
     OptionType,
     ResearchRun,
     ResearchRunStatus,
     ResearchRunType,
-    Traveler,
     Trip,
 )
 from research.activities import research_activities
@@ -39,6 +38,7 @@ from research.types import (
     HotelSearchParsed,
     TransportResearchParsed,
 )
+from schemas.legs import LegFiltersIn, RoomOccupancyIn
 from schemas.research import ResearchRunOut, ResearchStartOut
 from services import activities as activities_service
 from services import options as options_service
@@ -48,10 +48,6 @@ from services.combined_tiering import compute_combined_candidate_tiers
 
 
 logger = logging.getLogger(__name__)
-
-# docs/02_data_model.md Leg entry — known v1 limitation (no Traveler.age yet).
-HOTEL_CHILD_AGE_PLACEHOLDER = 10
-HOTEL_MAX_TRAVELERS = 6
 
 FetchKind = Literal["flights", "hotels", "activities", "transport"]
 FetchResult = (
@@ -81,6 +77,7 @@ async def start_leg_research(
         trace_id=str(uuid4()),
     )
     session.add(run)
+    leg.status = LegStatus.researching
     await session.commit()
     await session.refresh(run)
 
@@ -119,25 +116,17 @@ def option_types_for_run_type(run_type: ResearchRunType) -> list[OptionType]:
     raise ValueError(f"Unsupported research run_type: {run_type!r}")
 
 
-def hotel_party_counts(adults: int, children: int) -> tuple[int, int]:
-    """Reduce adults (never children) until adults + children <= 6."""
-    trimmed_adults = adults
-    while trimmed_adults + children > HOTEL_MAX_TRAVELERS and trimmed_adults > 0:
-        trimmed_adults -= 1
-    return trimmed_adults, children
-
-
-async def _active_lock_option_card_id(
+async def _active_lock_option_card_ids(
     session: AsyncSession,
     leg_id: UUID,
-) -> UUID | None:
+) -> list[UUID]:
     result = await session.execute(
         select(Lock.option_card_id).where(
             Lock.leg_id == leg_id,
             Lock.unlocked_at.is_(None),
         )
     )
-    return result.scalar_one_or_none()
+    return list(result.scalars().all())
 
 
 async def supersede_option_cards(
@@ -148,7 +137,7 @@ async def supersede_option_cards(
     only_research_run_id: UUID | None = None,
     exclude_research_run_id: UUID | None = None,
 ) -> int:
-    """Soft-delete active OptionCards matching the filter, skipping the active Lock target.
+    """Soft-delete active OptionCards matching the filter, skipping active Lock targets.
 
     Shared helper for both same-run retry cleanup (`only_research_run_id`) and
     post-completion cross-run supersede (`exclude_research_run_id`).
@@ -160,7 +149,7 @@ async def supersede_option_cards(
     if not option_types:
         return 0
 
-    locked_card_id = await _active_lock_option_card_id(session, leg_id)
+    locked_card_ids = await _active_lock_option_card_ids(session, leg_id)
     now = datetime.now(UTC)
 
     conditions = [
@@ -174,8 +163,8 @@ async def supersede_option_cards(
         conditions.append(
             OptionCard.research_run_id.is_distinct_from(exclude_research_run_id)
         )
-    if locked_card_id is not None:
-        conditions.append(OptionCard.id != locked_card_id)
+    if locked_card_ids:
+        conditions.append(OptionCard.id.not_in(locked_card_ids))
 
     result = await session.execute(
         update(OptionCard).where(*conditions).values(superseded_at=now)
@@ -184,21 +173,26 @@ async def supersede_option_cards(
     return int(result.rowcount or 0)
 
 
-async def _traveler_counts(
-    session: AsyncSession,
-    trip_id: UUID,
-) -> tuple[int, int]:
-    result = await session.execute(
-        select(Traveler.age_category).where(Traveler.trip_id == trip_id)
-    )
-    adults = 0
-    children = 0
-    for category in result.scalars().all():
-        if category == AgeCategory.adult:
-            adults += 1
-        else:
-            children += 1
-    return adults, children
+def _format_room_label(room_numbers: list[int], spec: RoomOccupancyIn) -> str:
+    if len(room_numbers) == 1:
+        rooms_part = f"Room {room_numbers[0]}"
+    else:
+        rooms_part = f"Rooms {', '.join(str(n) for n in room_numbers)}"
+
+    parts: list[str] = []
+    if spec.adults == 1:
+        parts.append("1 adult")
+    else:
+        parts.append(f"{spec.adults} adults")
+
+    if spec.children == 1:
+        age = spec.children_ages[0]
+        parts.append(f"1 child (age {age})")
+    elif spec.children > 1:
+        ages = ", ".join(str(age) for age in spec.children_ages)
+        parts.append(f"{spec.children} children (ages {ages})")
+
+    return f"{rooms_part} · {', '.join(parts)}"
 
 
 def _includes(run_type: ResearchRunType, kind: FetchKind) -> bool:
@@ -232,6 +226,12 @@ async def _persist_flight_and_transport(
             transport_parsed.options
         )
         priced = [o for o in survivors if o.estimated_price_amount is not None]
+        home_priced, fx_meta, _fx_failed = (
+            await transport_service.materialize_home_priced_transport(
+                priced,
+                home_currency=home_currency,
+            )
+        )
         (
             flight_assignments,
             flight_untiered,
@@ -239,7 +239,7 @@ async def _persist_flight_and_transport(
             transport_untiered,
         ) = compute_combined_candidate_tiers(
             flights=flight_parsed.flights,
-            priced_transport=priced,
+            priced_transport=home_priced,
             home_currency=home_currency,
         )
         await options_service.persist_flight_search(
@@ -259,6 +259,7 @@ async def _persist_flight_and_transport(
             trace_id=trace_id,
             priced_tier_assignments=transport_assignments,
             untiered_home_transport=transport_untiered,
+            transport_fx_meta=fx_meta,
             retier_existing_flights=False,
         )
         return
@@ -319,9 +320,10 @@ async def run_leg_research(
     if trip is None:
         raise ValueError(f"Trip not found for leg: {leg_id}")
 
-    adults, children = await _traveler_counts(session, trip.id)
-    if adults + children == 0:
-        adults = 1
+    parsed_filters = LegFiltersIn.model_validate(leg.filters)
+    rooms = parsed_filters.occupancy.rooms
+    adults = sum(r.adults for r in rooms)
+    children = sum(r.children for r in rooms)
     scoped_types = option_types_for_run_type(run_type)
     trace_id = run.trace_id
 
@@ -330,6 +332,7 @@ async def run_leg_research(
     run.started_at = datetime.now(UTC)
     run.error_message = None
     run.completed_at = None
+    leg.status = LegStatus.researching
     await session.commit()
 
     # Same-run retry: wipe this run's prior-attempt cards before writing fresh ones.
@@ -366,6 +369,8 @@ async def run_leg_research(
                     adults=adults,
                     children=children,
                     leg_id=leg_id,
+                    max_stops=parsed_filters.flight.max_stops,
+                    max_price=parsed_filters.flight.max_price,
                 )
             )
         else:
@@ -378,24 +383,60 @@ async def run_leg_research(
                 leg.destination_iata,
             )
 
-    if _includes(run_type, "hotels"):
-        hotel_adults, hotel_children = hotel_party_counts(adults, children)
-        children_ages = (
-            [HOTEL_CHILD_AGE_PLACEHOLDER] * hotel_children if hotel_children else None
-        )
-        fetch_kinds.append("hotels")
-        fetch_coros.append(
-            search_hotels(
-                q=f"{leg.destination} hotels",
-                check_in_date=leg.start_date,
-                check_out_date=leg.end_date,
-                currency=trip.home_currency,
-                adults=hotel_adults,
-                children=hotel_children,
-                children_ages=children_ages,
-                leg_id=leg_id,
+    hotel_room_specs: list[tuple[list[int], RoomOccupancyIn]] = []
+    if _includes(run_type, "hotels") and not leg.skip_hotel:
+        seen: dict[tuple[int, int, tuple[int, ...]], list[int]] = {}
+        for i, room in enumerate(rooms, start=1):
+            key = (room.adults, room.children, tuple(sorted(room.children_ages)))
+            seen.setdefault(key, []).append(i)
+        for key, room_numbers in seen.items():
+            adults_, children_, ages_ = key
+            spec = RoomOccupancyIn(
+                adults=adults_,
+                children=children_,
+                children_ages=list(ages_),
             )
+            hotel_room_specs.append((room_numbers, spec))
+        logger.info(
+            "hotel_room_search trace_id=%s leg_id=%s rooms_requested=%s "
+            "distinct_compositions=%s",
+            trace_id,
+            leg_id,
+            len(rooms),
+            len(hotel_room_specs),
         )
+    elif _includes(run_type, "hotels") and leg.skip_hotel:
+        logger.info(
+            "hotel_search_skipped skip_hotel=true trace_id=%s leg_id=%s",
+            trace_id,
+            leg_id,
+        )
+
+    hotel_coros = [
+        search_hotels(
+            q=f"{leg.destination} hotels",
+            check_in_date=leg.start_date,
+            check_out_date=leg.end_date,
+            currency=trip.home_currency,
+            adults=spec.adults,
+            children=spec.children,
+            children_ages=spec.children_ages or None,
+            leg_id=leg_id,
+            hotel_class=parsed_filters.hotel.star_class,
+            free_cancellation=parsed_filters.hotel.free_cancellation_only,
+            min_price=(
+                parsed_filters.hotel.price_range.min
+                if parsed_filters.hotel.price_range
+                else None
+            ),
+            max_price=(
+                parsed_filters.hotel.price_range.max
+                if parsed_filters.hotel.price_range
+                else None
+            ),
+        )
+        for _, spec in hotel_room_specs
+    ]
 
     if _includes(run_type, "activities"):
         fetch_kinds.append("activities")
@@ -426,9 +467,13 @@ async def run_leg_research(
         )
 
     try:
-        raw_results: Sequence[FetchResult | BaseException] = ()
-        if fetch_coros:
-            raw_results = await asyncio.gather(*fetch_coros, return_exceptions=True)
+        all_coros: list[Awaitable[FetchResult]] = [*fetch_coros, *hotel_coros]
+        all_raw: Sequence[FetchResult | BaseException] = ()
+        if all_coros:
+            all_raw = await asyncio.gather(*all_coros, return_exceptions=True)
+
+        raw_results = all_raw[: len(fetch_coros)]
+        hotel_raw_results = all_raw[len(fetch_coros) :]
 
         by_kind: dict[FetchKind, FetchResult | BaseException] = dict(
             zip(fetch_kinds, raw_results, strict=True)
@@ -448,15 +493,30 @@ async def run_leg_research(
                     exc_info=result,
                 )
 
-        # Hotels / activities are independent of the flight+transport pool.
-        hotels_result = by_kind.get("hotels")
-        if isinstance(hotels_result, HotelSearchParsed):
-            await options_service.persist_hotel_search(
-                session,
-                leg_id=leg_id,
-                parsed=hotels_result,
-                research_run_id=run_id,
-            )
+        for (room_numbers, spec), hotel_result in zip(
+            hotel_room_specs, hotel_raw_results, strict=True
+        ):
+            if isinstance(hotel_result, BaseException):
+                if first_error is None:
+                    first_error = hotel_result
+                logger.error(
+                    "run_leg_research_fetch_failed trace_id=%s run_id=%s leg_id=%s "
+                    "kind=hotels room_label=%s",
+                    trace_id,
+                    run_id,
+                    leg_id,
+                    _format_room_label(room_numbers, spec),
+                    exc_info=hotel_result,
+                )
+                continue
+            if isinstance(hotel_result, HotelSearchParsed):
+                await options_service.persist_hotel_search(
+                    session,
+                    leg_id=leg_id,
+                    parsed=hotel_result,
+                    research_run_id=run_id,
+                    room_label=_format_room_label(room_numbers, spec),
+                )
 
         activities_result = by_kind.get("activities")
         if isinstance(activities_result, ActivitiesResearchParsed):
@@ -502,6 +562,10 @@ async def run_leg_research(
         run.status = ResearchRunStatus.completed
         run.completed_at = datetime.now(UTC)
         run.error_message = None
+        # Reload leg after commits in the persist path so status write is on a live instance.
+        leg = await session.get(Leg, leg_id)
+        if leg is not None:
+            leg.status = LegStatus.ready
         await session.commit()
         logger.info(
             "run_leg_research_completed trace_id=%s run_id=%s leg_id=%s run_type=%s",
@@ -518,6 +582,9 @@ async def run_leg_research(
             run.status = ResearchRunStatus.failed
             run.completed_at = datetime.now(UTC)
             run.error_message = str(exc)
+            leg = await session.get(Leg, leg_id)
+            if leg is not None:
+                leg.status = LegStatus.failed
             await session.commit()
         logger.exception(
             "run_leg_research_failed trace_id=%s run_id=%s leg_id=%s",

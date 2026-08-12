@@ -60,8 +60,6 @@ Nothing is ever priced or claimed without a receipt.
 plan were written and reviewed before any application code, with each
 phase's exit criteria checked against the real reference itinerary.
 
-
-
 ## Tech stack
 
 **Backend** — FastAPI (async), Pydantic v2, SQLAlchemy 2.0 (async) + asyncpg,
@@ -72,16 +70,18 @@ schema-forced extraction) — no orchestration framework.
 
 **Data sourcing** — SerpApi (Google Flights / Google Hotels engines).
 
-**Frontend** *(planned)* — Next.js 15 (App Router), Tailwind CSS, ShadCN/UI,
-TanStack Query.
+**Frontend** — Next.js 16 (App Router), Tailwind CSS v4, ShadCN/UI (Base UI),
+TanStack Query, React Hook Form + Zod.
 
 **Infra** — Docker, Cloud Run, Cloud SQL, Secret Manager, Cloud Tasks, Cloud
 Build for the API; Vercel for the frontend.
 
 **Tooling** — `uv` (dependency + environment management), Ruff, mypy (strict),
-pytest / pytest-asyncio.
+pytest / pytest-asyncio; `pnpm` for the client.
 
 ## Running locally
+
+### API
 
 ```bash
 git clone <repo-url>
@@ -89,7 +89,7 @@ cd travelagency
 
 # API environment (see api/.env.example for the full list)
 cp api/.env.example api/.env
-# fill in DATABASE_URL, and any provider keys you're testing against
+# fill in DATABASE_URL, JWT_SIGNING_KEY, and any provider keys you're testing against
 
 docker compose up -d --build
 ```
@@ -111,7 +111,20 @@ Run the test suite:
 uv run pytest
 ```
 
+### Frontend
 
+```bash
+cd client
+cp .env.example .env.local
+# NEXT_PUBLIC_API_BASE_URL should point at the API (default http://localhost:8000)
+
+pnpm install
+pnpm dev
+```
+
+The app is then at `http://localhost:3000`. Auth is magic-link: request a link,
+open the verify URL (console email provider prints it locally), then use the
+trips / wizard / leg review UI against the running API.
 
 ## Project structure
 
@@ -121,31 +134,32 @@ travelagency/
 │   ├── main.py              # FastAPI app entrypoint
 │   ├── core/                # config, security, logging, error handling
 │   ├── db/                  # SQLAlchemy models, session, Alembic migrations
-│   ├── schemas/              # Pydantic request/response models
-│   ├── routers/              # HTTP layer — parses requests, calls services
-│   ├── services/              # domain logic, all DB writes
-│   ├── research/              # SerpApi + Claude research clients
-│   ├── worker/                # background research-run consumer
+│   ├── schemas/             # Pydantic request/response models
+│   ├── routers/             # HTTP layer — parses requests, calls services
+│   ├── services/            # domain logic, all DB writes
+│   ├── research/            # SerpApi + Claude research clients
+│   ├── worker/              # background research-run consumer
 │   └── tests/
+├── client/                  # Next.js App Router frontend
+│   ├── app/                 # routes — (auth), (app)/trips, wizard, legs
+│   ├── components/          # UI by domain + ShadCN primitives
+│   ├── hooks/               # TanStack Query hooks
+│   └── lib/                 # api client, auth context, types
 ├── docker-compose.yml
 └── cloudbuild.yaml
 ```
-
-
 
 ## Status
 
 - [x] Foundations — async FastAPI skeleton, Postgres, Alembic wired
 - [x] Schema — trips, members, travelers, legs, magic-link auth end to end
-- [ ] Trip / traveler / leg CRUD
-- [ ] Deterministic flight + hotel search (SerpApi)
-- [ ] Activities research agent + citation-enforcement eval suite
-- [ ] Research orchestration across a full trip
-- [ ] Core API surface (reactions, locks, budget)
-- [ ] Frontend
-- [ ] Deployment hardening
-
-
+- [x] Trip / traveler / leg CRUD
+- [x] Deterministic flight + hotel search (SerpApi)
+- [x] Activities research agent + citation-enforcement eval suite
+- [x] Research orchestration across a full trip
+- [x] Core API surface (reactions, locks, budget, sources/citations)
+- [x] Frontend (trips shell, wizard, leg review, budget, magic-link auth)
+- [ ] Deployment hardening (Cloud Run worker, Vercel prod wiring)
 
 ## License
 

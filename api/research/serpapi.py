@@ -533,6 +533,8 @@ async def search_flights(
     leg_id: UUID | None = None,
     flight_type: int = 2,
     hl: str = "en",
+    max_stops: int | None = None,
+    max_price: Decimal | None = None,
 ) -> FlightSearchParsed:
     """One-way google_flights search. `flight_type` defaults to 2 (one way)."""
     params: dict[str, object] = {
@@ -545,6 +547,15 @@ async def search_flights(
         "type": flight_type,
         "hl": hl,
     }
+    # SerpApi `stops` is a discrete code (1=nonstop, 2=≤1 stop, 3=≤2 stops), not a max.
+    if max_stops == 0:
+        params["stops"] = 1
+    elif max_stops == 1:
+        params["stops"] = 2
+    elif max_stops is not None and max_stops >= 2:
+        params["stops"] = 3
+    if max_price is not None:
+        params["max_price"] = int(max_price)
     body = await _serpapi_get(
         params,
         engine="google_flights",
@@ -669,6 +680,10 @@ async def search_hotels(
     leg_id: UUID | None = None,
     hl: str = "en",
     gl: str = "us",
+    hotel_class: list[int] | None = None,
+    free_cancellation: bool = False,
+    min_price: Decimal | None = None,
+    max_price: Decimal | None = None,
 ) -> HotelSearchParsed:
     params: dict[str, object] = {
         "q": q,
@@ -683,6 +698,15 @@ async def search_hotels(
             children_ages=children_ages,
         ),
     }
+    if hotel_class:
+        params["hotel_class"] = ",".join(str(c) for c in hotel_class)
+    # Omit false — same convention as optional guest fields in `_hotel_guest_params`.
+    if free_cancellation:
+        params["free_cancellation"] = True
+    if min_price is not None:
+        params["min_price"] = int(min_price)
+    if max_price is not None:
+        params["max_price"] = int(max_price)
     body = await _serpapi_get(
         params,
         engine="google_hotels",

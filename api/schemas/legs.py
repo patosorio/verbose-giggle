@@ -55,11 +55,45 @@ class HotelFiltersIn(BaseModel):
     max_distance_km_from: MaxDistanceKmFromIn | None = None
 
 
+class RoomOccupancyIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    adults: int = Field(ge=1, le=6)
+    children: int = Field(default=0, ge=0, le=5)
+    children_ages: list[int] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_room(self) -> "RoomOccupancyIn":
+        if self.adults + self.children > 6:
+            raise ValueError(
+                "google_hotels allows at most 6 travelers per room "
+                f"(got adults={self.adults} + children={self.children})"
+            )
+        if len(self.children_ages) != self.children:
+            raise ValueError(
+                "children_ages must have exactly one age (0-17) per child"
+            )
+        if any(age < 0 or age > 17 for age in self.children_ages):
+            raise ValueError("children_ages must each be between 0 and 17")
+        return self
+
+
+class OccupancyIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rooms: list[RoomOccupancyIn] = Field(
+        default_factory=lambda: [RoomOccupancyIn(adults=2)],
+        min_length=1,
+        max_length=20,
+    )
+
+
 class LegFiltersIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     flight: FlightFiltersIn = Field(default_factory=FlightFiltersIn)
     hotel: HotelFiltersIn = Field(default_factory=HotelFiltersIn)
+    occupancy: OccupancyIn = Field(default_factory=OccupancyIn)
 
 
 class LegCreateIn(BaseModel):
@@ -71,6 +105,7 @@ class LegCreateIn(BaseModel):
     start_date: date
     end_date: date
     filters: LegFiltersIn = Field(default_factory=LegFiltersIn)
+    skip_hotel: bool = False
 
     @model_validator(mode="after")
     def validate_date_range(self) -> "LegCreateIn":
@@ -89,6 +124,7 @@ class LegPatchIn(BaseModel):
     origin_iata: str | None = Field(default=None, min_length=3, max_length=3)
     destination_iata: str | None = Field(default=None, min_length=3, max_length=3)
     filters: LegFiltersIn | None = None
+    skip_hotel: bool | None = None
 
     @model_validator(mode="after")
     def validate_date_range(self) -> "LegPatchIn":
@@ -115,4 +151,5 @@ class LegOut(BaseModel):
     end_date: date
     nights: int
     filters: LegFiltersIn
+    skip_hotel: bool
     status: LegStatus

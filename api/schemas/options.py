@@ -45,6 +45,10 @@ class OptionCardCoreOut(BaseModel):
     title: str
     base_price_amount: Decimal | None
     currency: str
+    original_price_amount: Decimal | None = None
+    original_currency: str | None = None
+    fx_rate: Decimal | None = None
+    fx_rate_as_of: date | None = None
     reaction_summary: ReactionSummaryOut
 
 
@@ -75,6 +79,7 @@ class HotelOptionOut(OptionCardCoreOut):
     free_cancellation: bool
     eco_certified: bool
     amenities: list[str]
+    room_label: str | None
 
 
 class ActivityOptionOut(OptionCardCoreOut):
@@ -96,7 +101,19 @@ class TransportOptionOut(OptionCardCoreOut):
     booking_url: str | None
 
 
+class ImportedOptionOut(OptionCardCoreOut):
+    option_type: Literal[OptionType.imported] = OptionType.imported
+    source_url: str | None
+    extracted_title: str
+    extracted_description: str | None
+    category_hint: str | None
+
+
 OptionCardOut = Annotated[
-    FlightOptionOut | HotelOptionOut | ActivityOptionOut | TransportOptionOut,
+    FlightOptionOut
+    | HotelOptionOut
+    | ActivityOptionOut
+    | TransportOptionOut
+    | ImportedOptionOut,
     Field(discriminator="option_type"),
 ]

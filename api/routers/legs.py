@@ -7,10 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.security import require_leg_member, require_leg_organizer, require_user
 from db.models import BudgetBand, OptionType, User
 from db.session import get_session
+from research.imports import research_imported_option
+from schemas.imports import ImportOptionIn, ManualOptionIn
 from schemas.legs import LegOut, LegPatchIn
-from schemas.lock import BookedIn, LockIn, LockOut
+from schemas.lock import BookedIn, LockIn, LockOut, PriceAdjustIn
 from schemas.options import OptionCardOut
 from schemas.research import ResearchRunOut, ResearchStartIn, ResearchStartOut
+from services import imports as imports_service
 from services import legs as legs_service
 from services import lock as lock_service
 from services import options as options_service
@@ -28,6 +31,16 @@ async def patch_leg(
 ) -> LegOut:
     leg = await legs_service.patch_leg(session, leg_id, current_user.id, body)
     return LegOut.model_validate(leg)
+
+
+@router.delete("/{leg_id}", status_code=204, response_class=Response)
+async def delete_leg(
+    leg_id: UUID,
+    current_user: Annotated[User, Depends(require_leg_organizer)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    await legs_service.delete_leg(session, leg_id, current_user.id)
+    return Response(status_code=204)
 
 
 @router.post(
@@ -89,6 +102,44 @@ async def list_options(
     )
 
 
+@router.post(
+    "/{leg_id}/options/import",
+    status_code=201,
+    response_model=OptionCardOut,
+)
+async def import_option(
+    leg_id: UUID,
+    body: ImportOptionIn,
+    _: Annotated[User, Depends(require_leg_member)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> OptionCardOut:
+    parsed = await research_imported_option(url=str(body.url))
+    return await imports_service.persist_imported_option(
+        session,
+        leg_id=leg_id,
+        tier=body.tier,
+        parsed=parsed,
+    )
+
+
+@router.post(
+    "/{leg_id}/options/manual",
+    status_code=201,
+    response_model=OptionCardOut,
+)
+async def create_manual_option(
+    leg_id: UUID,
+    body: ManualOptionIn,
+    _: Annotated[User, Depends(require_leg_member)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> OptionCardOut:
+    return await imports_service.persist_manual_option(
+        session,
+        leg_id=leg_id,
+        body=body,
+    )
+
+
 @router.post("/{leg_id}/lock", response_model=LockOut)
 async def create_lock(
     leg_id: UUID,
@@ -105,23 +156,26 @@ async def create_lock(
     return LockOut.model_validate(lock)
 
 
-@router.delete("/{leg_id}/lock", status_code=204, response_class=Response)
+@router.delete("/{leg_id}/lock/{option_card_id}", status_code=204, response_class=Response)
 async def delete_lock(
     leg_id: UUID,
+    option_card_id: UUID,
     current_user: Annotated[User, Depends(require_leg_organizer)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Response:
     await lock_service.delete_lock(
         session,
         leg_id=leg_id,
+        option_card_id=option_card_id,
         user_id=current_user.id,
     )
     return Response(status_code=204)
 
 
-@router.patch("/{leg_id}/lock/booked", response_model=LockOut)
+@router.patch("/{leg_id}/lock/{option_card_id}/booked", response_model=LockOut)
 async def set_lock_booked(
     leg_id: UUID,
+    option_card_id: UUID,
     body: BookedIn,
     current_user: Annotated[User, Depends(require_leg_member)],
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -129,7 +183,28 @@ async def set_lock_booked(
     lock = await lock_service.set_booked(
         session,
         leg_id=leg_id,
+        option_card_id=option_card_id,
         is_booked=body.is_booked,
+        user_id=current_user.id,
+    )
+    return LockOut.model_validate(lock)
+
+
+@router.patch("/{leg_id}/lock/{option_card_id}/price", response_model=LockOut)
+async def adjust_lock_price(
+    leg_id: UUID,
+    option_card_id: UUID,
+    body: PriceAdjustIn,
+    current_user: Annotated[User, Depends(require_leg_organizer)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> LockOut:
+    lock = await lock_service.adjust_price(
+        session,
+        leg_id=leg_id,
+        option_card_id=option_card_id,
+        new_price_amount=body.new_price_amount,
+        new_currency=body.new_currency,
+        note=body.note,
         user_id=current_user.id,
     )
     return LockOut.model_validate(lock)

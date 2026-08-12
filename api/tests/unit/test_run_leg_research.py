@@ -41,7 +41,7 @@ from research.types import (
     SuggestedTiming,
     TransportResearchParsed,
 )
-from services.research import hotel_party_counts, run_leg_research
+from services.research import run_leg_research
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "serpapi"
 
@@ -304,12 +304,6 @@ async def _queued_run(
     session.add(run)
     await session.flush()
     return run
-
-
-def test_hotel_party_counts_trims_adults_not_children() -> None:
-    assert hotel_party_counts(6, 1) == (5, 1)
-    assert hotel_party_counts(7, 0) == (6, 0)
-    assert hotel_party_counts(2, 1) == (2, 1)
 
 
 @pytest.mark.asyncio

@@ -105,6 +105,7 @@ class LockEventType(enum.StrEnum):
     relocked = "relocked"
     marked_booked = "marked_booked"
     unmarked_booked = "unmarked_booked"
+    price_adjusted = "price_adjusted"
 
 
 def _pg_enum(enum_cls: type[enum.StrEnum], name: str) -> Enum:
@@ -233,6 +234,7 @@ class Leg(Base):
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     nights: Mapped[int] = mapped_column(Integer, nullable=False)
     filters: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    skip_hotel: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     status: Mapped[LegStatus] = mapped_column(_pg_enum(LegStatus, "leg_status"), nullable=False)
 
 
@@ -289,10 +291,17 @@ class OptionCard(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     base_price_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
-    raw_response_id: Mapped[uuid.UUID] = mapped_column(
+    # Set when base_price was FX-converted at research persist (activities/transport).
+    original_price_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True
+    )
+    original_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    fx_rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 8), nullable=True)
+    fx_rate_as_of: Mapped[date | None] = mapped_column(Date, nullable=True)
+    raw_response_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("raw_api_responses.id"),
-        nullable=False,
+        nullable=True,
     )
     research_run_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
@@ -346,6 +355,7 @@ class HotelOption(Base):
     free_cancellation: Mapped[bool] = mapped_column(Boolean, nullable=False)
     eco_certified: Mapped[bool] = mapped_column(Boolean, nullable=False)
     amenities: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    room_label: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
 class ActivityOption(Base):
@@ -392,7 +402,7 @@ class ImportedOption(Base):
         ForeignKey("option_cards.id"),
         primary_key=True,
     )
-    source_url: Mapped[str] = mapped_column(String, nullable=False)
+    source_url: Mapped[str | None] = mapped_column(String, nullable=True)
     extracted_title: Mapped[str] = mapped_column(String, nullable=False)
     extracted_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category_hint: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -467,12 +477,18 @@ class Reaction(Base):
 
 class Lock(Base):
     __tablename__ = "locks"
+    # Partial unique index predicate (flight/hotel/imported) is duplicated in the
+    # migration f6a7b8c9d0e1_lock_type_scoped and in services/lock.py's
+    # SINGLE_LOCK_OPTION_TYPES — no single source of truth; keep all three aligned.
     __table_args__ = (
         Index(
-            "uq_locks_leg_id_active",
+            "uq_locks_leg_id_option_type_active",
             "leg_id",
+            "option_type",
             unique=True,
-            postgresql_where=text("unlocked_at IS NULL"),
+            postgresql_where=text(
+                "unlocked_at IS NULL AND option_type IN ('flight', 'hotel', 'imported')"
+            ),
         ),
     )
 
@@ -487,12 +503,22 @@ class Lock(Base):
         ForeignKey("option_cards.id"),
         nullable=False,
     )
+    # Denormalized from option_cards so the partial unique index can key on type
+    # without joining. Must match card.option_type at insert time (services/lock.py).
+    option_type: Mapped[OptionType] = mapped_column(
+        _pg_enum(OptionType, "option_type"),
+        nullable=False,
+    )
     locked_by_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),
         nullable=False,
     )
     locked_price_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    locked_unit_price_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True
+    )
+    locked_party_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
     locked_currency: Mapped[str] = mapped_column(String(3), nullable=False)
     locked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     unlocked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -519,3 +545,10 @@ class LockEvent(Base):
         nullable=False,
     )
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    previous_price_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True
+    )
+    new_price_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    previous_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    new_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)

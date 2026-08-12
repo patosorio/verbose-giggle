@@ -11,6 +11,11 @@ class TravelerCreateIn(BaseModel):
     age_category: AgeCategory
 
 
+class TravelerPatchIn(BaseModel):
+    name: str | None = Field(default=None, min_length=1)
+    age_category: AgeCategory | None = None
+
+
 class TravelerOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

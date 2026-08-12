@@ -29,13 +29,36 @@ from db.models import (
     Trip,
 )
 from research.activities import ActivitiesAgentError
-from research.tiering import matches_home_currency, partition_price_tiers
+from research.tiering import partition_price_tiers
 from research.types import ActivitiesResearchParsed, ParsedActivityOption, SuggestedTiming
+from services.fx import FxConversion, new_rate_cache, resolve_home_price
 
 logger = logging.getLogger(__name__)
 
 # docs/04_build_plan.md Phase 3 — proxy for "not enough day left after transfer + airport time"
 SAME_DAY_FLIGHT_DURATION_THRESHOLD_MINUTES = 300
+
+
+class _HomePricedActivity:
+    """Tierable wrapper: price_amount is always in trip home currency after FX."""
+
+    __slots__ = ("activity", "home_amount", "home_currency", "fx")
+
+    def __init__(
+        self,
+        activity: ParsedActivityOption,
+        home_amount: Decimal,
+        home_currency: str,
+        fx: FxConversion | None,
+    ) -> None:
+        self.activity = activity
+        self.home_amount = home_amount
+        self.home_currency = home_currency
+        self.fx = fx
+
+    @property
+    def price_amount(self) -> Decimal:
+        return self.home_amount
 
 
 def drop_missing_citations(
@@ -253,14 +276,21 @@ async def _persist_activity_option(
     raw_response_id: UUID,
     research_run_id: UUID | None,
     retrieved_at: datetime,
+    home_amount: Decimal,
+    home_currency: str,
+    fx: FxConversion | None,
 ) -> OptionCard:
     card = OptionCard(
         leg_id=leg_id,
         option_type=OptionType.activity,
         tier=tier,
         title=activity.title,
-        base_price_amount=activity.estimated_price_amount,
-        currency=activity.estimated_price_currency,
+        base_price_amount=home_amount,
+        currency=home_currency,
+        original_price_amount=fx.original_amount if fx is not None else None,
+        original_currency=fx.original_currency if fx is not None else None,
+        fx_rate=fx.fx_rate if fx is not None else None,
+        fx_rate_as_of=fx.fx_rate_as_of if fx is not None else None,
         raw_response_id=raw_response_id,
         research_run_id=research_run_id,
     )
@@ -300,6 +330,8 @@ async def persist_activities_research(
 
     Writes the raw row even when zero activities survive filters, and even when
     extraction_failed is True (then raises after the raw commit so the ResearchRun can fail).
+    Non-home source currencies are converted to Trip.home_currency on the OptionCard
+    (FX snapshot columns); ActivityOption keeps the source amount/currency.
     """
     raw = await _write_raw_response(
         session,
@@ -337,63 +369,79 @@ async def persist_activities_research(
     )
 
     expected = (home_currency or "XXX").upper()
-    home_activities = [
-        a
-        for a in survivors
-        if matches_home_currency(a.estimated_price_currency, expected)
-    ]
-    foreign_activities = [
-        a
-        for a in survivors
-        if not matches_home_currency(a.estimated_price_currency, expected)
-    ]
+    rate_cache = new_rate_cache()
+    home_priced: list[_HomePricedActivity] = []
+    foreign_unconverted: list[_HomePricedActivity] = []
+    for activity in survivors:
+        home_amount, card_currency, fx = await resolve_home_price(
+            amount=activity.estimated_price_amount,
+            currency=activity.estimated_price_currency,
+            home_currency=expected,
+            cache=rate_cache,
+        )
+        wrapped = _HomePricedActivity(activity, home_amount, card_currency, fx)
+        if card_currency == expected:
+            home_priced.append(wrapped)
+        else:
+            foreign_unconverted.append(wrapped)
 
-    tiered, untiered_home = partition_price_tiers(home_activities)
+    tiered, untiered_home = partition_price_tiers(home_priced)
     retrieved_at = datetime.now(UTC)
     cards: list[OptionCard] = []
-    for tier, activity in tiered:
+    for tier, priced in tiered:
         card = await _persist_activity_option(
             session,
             leg_id=leg_id,
             tier=tier,
-            activity=activity,
+            activity=priced.activity,
             raw_response_id=raw.id,
             research_run_id=research_run_id,
             retrieved_at=retrieved_at,
+            home_amount=priced.home_amount,
+            home_currency=priced.home_currency,
+            fx=priced.fx,
         )
         cards.append(card)
-    for activity in untiered_home:
+    for priced in untiered_home:
         card = await _persist_activity_option(
             session,
             leg_id=leg_id,
             tier=None,
-            activity=activity,
+            activity=priced.activity,
             raw_response_id=raw.id,
             research_run_id=research_run_id,
             retrieved_at=retrieved_at,
+            home_amount=priced.home_amount,
+            home_currency=priced.home_currency,
+            fx=priced.fx,
         )
         cards.append(card)
-    for activity in foreign_activities:
+    for priced in foreign_unconverted:
         card = await _persist_activity_option(
             session,
             leg_id=leg_id,
             tier=None,
-            activity=activity,
+            activity=priced.activity,
             raw_response_id=raw.id,
             research_run_id=research_run_id,
             retrieved_at=retrieved_at,
+            home_amount=priced.home_amount,
+            home_currency=priced.home_currency,
+            fx=priced.fx,
         )
         cards.append(card)
 
     await session.commit()
     logger.info(
         "activities_persisted trace_id=%s leg_id=%s raw_id=%s cards=%s "
-        "extracted=%s survived=%s",
+        "extracted=%s survived=%s converted_home=%s fx_failed=%s",
         trace_id,
         leg_id,
         raw.id,
         len(cards),
         len(parsed.activities),
         len(survivors),
+        len(home_priced),
+        len(foreign_unconverted),
     )
     return cards

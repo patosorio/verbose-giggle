@@ -74,3 +74,23 @@ async def verify_magic_link(session: AsyncSession, raw_token: str) -> User:
 
         await session.refresh(user)
         return user
+
+
+async def update_display_name(
+    session: AsyncSession,
+    user: User,
+    display_name: str,
+) -> User:
+    trimmed = display_name.strip()
+    user_id = user.id
+    # require_user may have autobegun a read txn on this request session;
+    # session.begin() needs a clean slate (same write style as magic-link helpers).
+    if session.in_transaction():
+        await session.rollback()
+
+    async with session.begin():
+        result = await session.execute(select(User).where(User.id == user_id))
+        db_user = result.scalar_one()
+        db_user.display_name = trimmed
+        await session.refresh(db_user)
+        return db_user

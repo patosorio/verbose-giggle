@@ -38,6 +38,10 @@ async def _login_as(client: AsyncClient, email_sender: _TokenEmailSender, email:
         json={"token": email_sender.last_token},
     )
     assert verify_response.status_code == 200
+    body = verify_response.json()
+    assert isinstance(body["access_token"], str) and body["access_token"]
+    assert body["token_type"] == "bearer"
+    client.headers["Authorization"] = f"Bearer {body['access_token']}"
 
 
 @pytest.mark.asyncio

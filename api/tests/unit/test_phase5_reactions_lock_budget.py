@@ -42,6 +42,10 @@ async def _login_as(client: AsyncClient, email_sender: _TokenEmailSender, email:
         json={"token": email_sender.last_token},
     )
     assert verify_response.status_code == 200
+    body = verify_response.json()
+    assert isinstance(body["access_token"], str) and body["access_token"]
+    assert body["token_type"] == "bearer"
+    client.headers["Authorization"] = f"Bearer {body['access_token']}"
 
 
 async def _create_trip_with_legs(
@@ -244,6 +248,9 @@ async def test_lock_rejects_second_active_lock(
     email_sender: _TokenEmailSender,
     db_session: AsyncSession,
 ) -> None:
+    # Both seeded cards default to option_type=flight, so this still correctly
+    # exercises the same-type conflict path under type-scoped uniqueness —
+    # not obsolete after multi-lock-per-leg.
     await _login_as(client, email_sender, "lock-conflict@example.com")
     _, leg_ids = await _create_trip_with_legs(client, name="Lock Conflict Trip")
     first = await _seed_option_card(
@@ -303,7 +310,7 @@ async def test_unlock_then_relock_writes_lock_events(
     )
     assert lock_one.status_code == 200
 
-    unlock = await client.delete(f"/legs/{leg_ids[0]}/lock")
+    unlock = await client.delete(f"/legs/{leg_ids[0]}/lock/{first.id}")
     assert unlock.status_code == 204
 
     lock_two = await client.post(
@@ -331,12 +338,19 @@ async def test_unlock_then_relock_writes_lock_events(
 async def test_booked_toggle_404_without_active_lock(
     client: AsyncClient,
     email_sender: _TokenEmailSender,
+    db_session: AsyncSession,
 ) -> None:
     await _login_as(client, email_sender, "booked-404@example.com")
     _, leg_ids = await _create_trip_with_legs(client, name="Booked Without Lock Trip")
+    card = await _seed_option_card(
+        db_session,
+        leg_id=leg_ids[0],
+        title="Unlocked Flight",
+        base_price_amount=Decimal("500.00"),
+    )
 
     response = await client.patch(
-        f"/legs/{leg_ids[0]}/lock/booked",
+        f"/legs/{leg_ids[0]}/lock/{card.id}/booked",
         json={"is_booked": True},
     )
     assert response.status_code == 404
@@ -396,9 +410,209 @@ async def test_budget_running_total_matches_locked_sum(
     assert len(body["by_leg"]) == 3
 
     by_leg = {entry["leg_id"]: entry for entry in body["by_leg"]}
-    assert by_leg[leg_ids[0]]["locked_option_id"] == str(card0.id)
+    assert by_leg[leg_ids[0]]["locked_option_ids"] == [str(card0.id)]
     assert Decimal(by_leg[leg_ids[0]]["amount"]) == Decimal("1000.00")
-    assert by_leg[leg_ids[1]]["locked_option_id"] == str(card1.id)
+    assert by_leg[leg_ids[1]]["locked_option_ids"] == [str(card1.id)]
     assert Decimal(by_leg[leg_ids[1]]["amount"]) == Decimal("2500.50")
-    assert by_leg[leg_ids[2]]["locked_option_id"] is None
+    assert by_leg[leg_ids[2]]["locked_option_ids"] == []
     assert by_leg[leg_ids[2]]["amount"] is None
+
+
+@pytest.mark.asyncio
+async def test_lock_allows_flight_and_hotel_on_same_leg(
+    client: AsyncClient,
+    email_sender: _TokenEmailSender,
+    db_session: AsyncSession,
+) -> None:
+    await _login_as(client, email_sender, "lock-flight-hotel@example.com")
+    _, leg_ids = await _create_trip_with_legs(client, name="Flight And Hotel Lock Trip")
+    flight = await _seed_option_card(
+        db_session,
+        leg_id=leg_ids[0],
+        title="Flight Option",
+        base_price_amount=Decimal("1200.00"),
+        option_type=OptionType.flight,
+    )
+    hotel = await _seed_option_card(
+        db_session,
+        leg_id=leg_ids[0],
+        title="Hotel Option",
+        base_price_amount=Decimal("3400.00"),
+        option_type=OptionType.hotel,
+        tier=BudgetBand.comfort,
+    )
+
+    lock_flight = await client.post(
+        f"/legs/{leg_ids[0]}/lock",
+        json={"option_card_id": str(flight.id)},
+    )
+    assert lock_flight.status_code == 200
+
+    lock_hotel = await client.post(
+        f"/legs/{leg_ids[0]}/lock",
+        json={"option_card_id": str(hotel.id)},
+    )
+    assert lock_hotel.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_lock_rejects_second_hotel_on_same_leg(
+    client: AsyncClient,
+    email_sender: _TokenEmailSender,
+    db_session: AsyncSession,
+) -> None:
+    await _login_as(client, email_sender, "lock-two-hotels@example.com")
+    _, leg_ids = await _create_trip_with_legs(client, name="Two Hotels Lock Trip")
+    first = await _seed_option_card(
+        db_session,
+        leg_id=leg_ids[0],
+        title="Hotel A",
+        base_price_amount=Decimal("2000.00"),
+        option_type=OptionType.hotel,
+    )
+    second = await _seed_option_card(
+        db_session,
+        leg_id=leg_ids[0],
+        title="Hotel B",
+        base_price_amount=Decimal("3000.00"),
+        option_type=OptionType.hotel,
+        tier=BudgetBand.comfort,
+    )
+
+    locked = await client.post(
+        f"/legs/{leg_ids[0]}/lock",
+        json={"option_card_id": str(first.id)},
+    )
+    assert locked.status_code == 200
+
+    conflict = await client.post(
+        f"/legs/{leg_ids[0]}/lock",
+        json={"option_card_id": str(second.id)},
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["error"]["code"] == "conflict"
+
+
+@pytest.mark.asyncio
+async def test_lock_allows_multiple_activities_on_same_leg(
+    client: AsyncClient,
+    email_sender: _TokenEmailSender,
+    db_session: AsyncSession,
+) -> None:
+    await _login_as(client, email_sender, "lock-multi-activity@example.com")
+    _, leg_ids = await _create_trip_with_legs(client, name="Multi Activity Lock Trip")
+    cards = []
+    for i, price in enumerate((Decimal("100.00"), Decimal("200.00"), Decimal("300.00"))):
+        card = await _seed_option_card(
+            db_session,
+            leg_id=leg_ids[0],
+            title=f"Activity {i}",
+            base_price_amount=price,
+            option_type=OptionType.activity,
+            tier=None,
+        )
+        cards.append(card)
+
+    for card in cards:
+        response = await client.post(
+            f"/legs/{leg_ids[0]}/lock",
+            json={"option_card_id": str(card.id)},
+        )
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_lock_allows_multiple_transports_on_same_leg(
+    client: AsyncClient,
+    email_sender: _TokenEmailSender,
+    db_session: AsyncSession,
+) -> None:
+    await _login_as(client, email_sender, "lock-multi-transport@example.com")
+    _, leg_ids = await _create_trip_with_legs(client, name="Multi Transport Lock Trip")
+    first = await _seed_option_card(
+        db_session,
+        leg_id=leg_ids[0],
+        title="Ferry A",
+        base_price_amount=Decimal("50.00"),
+        option_type=OptionType.transport,
+        tier=None,
+    )
+    second = await _seed_option_card(
+        db_session,
+        leg_id=leg_ids[0],
+        title="Bus B",
+        base_price_amount=Decimal("75.00"),
+        option_type=OptionType.transport,
+        tier=None,
+    )
+
+    lock_a = await client.post(
+        f"/legs/{leg_ids[0]}/lock",
+        json={"option_card_id": str(first.id)},
+    )
+    assert lock_a.status_code == 200
+
+    lock_b = await client.post(
+        f"/legs/{leg_ids[0]}/lock",
+        json={"option_card_id": str(second.id)},
+    )
+    assert lock_b.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_budget_sums_multiple_locks_on_same_leg(
+    client: AsyncClient,
+    email_sender: _TokenEmailSender,
+    db_session: AsyncSession,
+) -> None:
+    await _login_as(client, email_sender, "budget-multi-lock@example.com")
+    trip_id, leg_ids = await _create_trip_with_legs(
+        client,
+        name="Budget Multi Lock Trip",
+    )
+
+    flight = await _seed_option_card(
+        db_session,
+        leg_id=leg_ids[0],
+        title="Multi Flight",
+        base_price_amount=Decimal("1000.00"),
+        option_type=OptionType.flight,
+    )
+    hotel = await _seed_option_card(
+        db_session,
+        leg_id=leg_ids[0],
+        title="Multi Hotel",
+        base_price_amount=Decimal("2500.00"),
+        option_type=OptionType.hotel,
+        tier=BudgetBand.comfort,
+    )
+    activity = await _seed_option_card(
+        db_session,
+        leg_id=leg_ids[0],
+        title="Multi Activity",
+        base_price_amount=Decimal("150.00"),
+        option_type=OptionType.activity,
+        tier=None,
+    )
+
+    for card in (flight, hotel, activity):
+        response = await client.post(
+            f"/legs/{leg_ids[0]}/lock",
+            json={"option_card_id": str(card.id)},
+        )
+        assert response.status_code == 200
+
+    expected_total = Decimal("1000.00") + Decimal("2500.00") + Decimal("150.00")
+    response = await client.get(f"/trips/{trip_id}/budget")
+    assert response.status_code == 200
+    body = response.json()
+    assert Decimal(body["running_total"]) == expected_total
+    assert len(body["by_leg"]) == 1
+
+    entry = body["by_leg"][0]
+    assert set(entry["locked_option_ids"]) == {
+        str(flight.id),
+        str(hotel.id),
+        str(activity.id),
+    }
+    assert Decimal(entry["amount"]) == expected_total

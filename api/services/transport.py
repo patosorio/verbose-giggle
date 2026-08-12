@@ -12,6 +12,7 @@ pool with the leg's currently-active priced FlightOption cards
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -40,8 +41,9 @@ from services.combined_tiering import (
     peer_tier_updates_for_eligible,
     transport_assignments_from_pool,
     transport_untiered_from_pool,
-    untiered_complement_by_identity,
 )
+from services.fx import FxConversion, new_rate_cache, resolve_home_price
+
 
 logger = logging.getLogger(__name__)
 
@@ -129,24 +131,81 @@ async def _write_raw_response(
     return raw
 
 
+async def materialize_home_priced_transport(
+    options: list[ParsedTransportOption],
+    *,
+    home_currency: str,
+) -> tuple[
+    list[ParsedTransportOption],
+    dict[int, tuple[ParsedTransportOption, FxConversion | None]],
+    list[ParsedTransportOption],
+]:
+    """Convert priced transport into home currency for pooling/persist.
+
+    Returns:
+      home_options: clones (or originals) priced in home_currency
+      meta_by_id: id(home_option) -> (source_option, fx_or_none)
+      fx_failed: originals that could not be converted (remain foreign)
+    """
+    expected = home_currency.strip().upper()
+    rate_cache = new_rate_cache()
+    home_options: list[ParsedTransportOption] = []
+    meta_by_id: dict[int, tuple[ParsedTransportOption, FxConversion | None]] = {}
+    fx_failed: list[ParsedTransportOption] = []
+
+    for option in options:
+        amount = option.estimated_price_amount
+        currency = option.estimated_price_currency
+        if amount is None or currency is None:
+            continue
+        home_amount, card_currency, fx = await resolve_home_price(
+            amount=amount,
+            currency=currency,
+            home_currency=expected,
+            cache=rate_cache,
+        )
+        if card_currency != expected:
+            fx_failed.append(option)
+            continue
+        if fx is None:
+            home_options.append(option)
+            meta_by_id[id(option)] = (option, None)
+        else:
+            home_option = replace(
+                option,
+                estimated_price_amount=home_amount,
+                estimated_price_currency=expected,
+            )
+            home_options.append(home_option)
+            meta_by_id[id(home_option)] = (option, fx)
+
+    return home_options, meta_by_id, fx_failed
+
+
 async def _persist_transport_option(
     session: AsyncSession,
     *,
     leg_id: UUID,
     tier: BudgetBand | None,
     option: ParsedTransportOption,
+    source_option: ParsedTransportOption,
     raw_response_id: UUID,
     research_run_id: UUID | None,
     retrieved_at: datetime,
     card_currency: str,
+    fx: FxConversion | None,
 ) -> OptionCard:
     card = OptionCard(
         leg_id=leg_id,
         option_type=OptionType.transport,
         tier=tier,
-        title=transport_card_title(option),
+        title=transport_card_title(source_option),
         base_price_amount=option.estimated_price_amount,
         currency=card_currency,
+        original_price_amount=fx.original_amount if fx is not None else None,
+        original_currency=fx.original_currency if fx is not None else None,
+        fx_rate=fx.fx_rate if fx is not None else None,
+        fx_rate_as_of=fx.fx_rate_as_of if fx is not None else None,
         raw_response_id=raw_response_id,
         research_run_id=research_run_id,
     )
@@ -155,17 +214,17 @@ async def _persist_transport_option(
     session.add(
         TransportOption(
             option_card_id=card.id,
-            mode=TransportMode(option.mode),
-            operator_name=option.operator_name,
-            departure_point=option.departure_point,
-            arrival_point=option.arrival_point,
-            estimated_duration_minutes=option.estimated_duration_minutes,
-            estimated_price_amount=option.estimated_price_amount,
-            estimated_price_currency=option.estimated_price_currency,
-            booking_url=option.booking_url,
+            mode=TransportMode(source_option.mode),
+            operator_name=source_option.operator_name,
+            departure_point=source_option.departure_point,
+            arrival_point=source_option.arrival_point,
+            estimated_duration_minutes=source_option.estimated_duration_minutes,
+            estimated_price_amount=source_option.estimated_price_amount,
+            estimated_price_currency=source_option.estimated_price_currency,
+            booking_url=source_option.booking_url,
         )
     )
-    for citation in option.citations:
+    for citation in source_option.citations:
         session.add(
             Citation(
                 option_card_id=card.id,
@@ -186,15 +245,17 @@ async def persist_transport_research(
     trace_id: str | None = None,
     priced_tier_assignments: list[tuple[BudgetBand, ParsedTransportOption]] | None = None,
     untiered_home_transport: list[ParsedTransportOption] | None = None,
+    transport_fx_meta: dict[int, tuple[ParsedTransportOption, FxConversion | None]]
+    | None = None,
     retier_existing_flights: bool = True,
 ) -> list[OptionCard]:
     """Persist RawApiResponse first, then surviving OptionCard/TransportOption/Citation rows.
 
     Writes the raw row even when zero options survive citation validation, and even when
     extraction_failed is True (then raises after the raw commit so the ResearchRun can fail).
-    Unpriced survivors persist with tier=NULL; priced survivors pool with active flights
-    unless priced_tier_assignments is provided (full-run single pool). Home-currency priced
-    candidates outside the cheapest-9 cut persist with tier=NULL (Bug 3).
+    Unpriced survivors persist with tier=NULL; priced survivors are FX-converted into
+    Trip.home_currency on the OptionCard (detail row keeps source currency), then pool
+    with flights unless priced_tier_assignments is provided (full-run single pool).
     """
     raw = await _write_raw_response(
         session,
@@ -227,52 +288,67 @@ async def persist_transport_research(
     expected = (home_currency or "XXX").upper()
     unpriced = [o for o in survivors if o.estimated_price_amount is None]
     priced = [o for o in survivors if o.estimated_price_amount is not None]
-    priced_home = [
-        o for o in priced if matches_home_currency(o.estimated_price_currency, expected)
-    ]
-    priced_foreign = [
-        o
-        for o in priced
-        if not matches_home_currency(o.estimated_price_currency, expected)
-    ]
 
-    peer_updates: dict[UUID, BudgetBand | None] = {}
-    flight_pool_size = 0
-    if priced_tier_assignments is not None:
+    if transport_fx_meta is not None and priced_tier_assignments is not None:
+        # Full-run path: caller already converted + tiered in home currency.
+        fx_meta = transport_fx_meta
         tiered_priced = priced_tier_assignments
-        if untiered_home_transport is not None:
-            untiered_home = untiered_home_transport
-        else:
-            untiered_home = untiered_complement_by_identity(priced_home, tiered_priced)
-    elif priced_home:
-        # Unpriced / foreign-currency never touch the pooling query
-        # (docs/01_architecture.md §4.1, §9.12).
-        peer_cards: list[OptionCard] = []
-        if retier_existing_flights and home_currency:
-            peer_cards = await load_active_priced_option_cards(
-                session,
-                leg_id=leg_id,
-                option_type=OptionType.flight,
-                home_currency=home_currency,
-            )
-        flight_pool_size = len(peer_cards)
-        pool = build_pool_from_new_and_existing(
-            home_currency=expected,
-            new_priced_transport=priced_home,
-            existing_priced_cards=peer_cards,
+        untiered_home = (
+            untiered_home_transport
+            if untiered_home_transport is not None
+            else []
         )
-        tiers_by_key = assign_pooled_price_tiers(pool)
-        tiered_priced = transport_assignments_from_pool(priced_home, tiers_by_key)
-        untiered_home = transport_untiered_from_pool(priced_home, tiers_by_key)
-        if retier_existing_flights and peer_cards:
-            peer_updates = peer_tier_updates_for_eligible(peer_cards, tiers_by_key)
+        assigned_ids = {id(o) for _, o in tiered_priced} | {id(o) for o in untiered_home}
+        priced_foreign = [
+            o
+            for o in priced
+            if id(o) not in assigned_ids
+            and id(o) not in fx_meta
+            and not matches_home_currency(o.estimated_price_currency, expected)
+        ]
+        peer_updates = {}
+        flight_pool_size = 0
     else:
-        tiered_priced = []
-        untiered_home = []
+        priced_home, fx_meta, priced_foreign = await materialize_home_priced_transport(
+            priced,
+            home_currency=expected,
+        )
+        peer_updates = {}
+        flight_pool_size = 0
+        if priced_home:
+            peer_cards: list[OptionCard] = []
+            if retier_existing_flights and home_currency:
+                peer_cards = await load_active_priced_option_cards(
+                    session,
+                    leg_id=leg_id,
+                    option_type=OptionType.flight,
+                    home_currency=home_currency,
+                )
+            flight_pool_size = len(peer_cards)
+            pool = build_pool_from_new_and_existing(
+                home_currency=expected,
+                new_priced_transport=priced_home,
+                existing_priced_cards=peer_cards,
+            )
+            tiers_by_key = assign_pooled_price_tiers(pool)
+            tiered_priced = transport_assignments_from_pool(priced_home, tiers_by_key)
+            untiered_home = transport_untiered_from_pool(priced_home, tiers_by_key)
+            if retier_existing_flights and peer_cards:
+                peer_updates = peer_tier_updates_for_eligible(peer_cards, tiers_by_key)
+        else:
+            tiered_priced = []
+            untiered_home = []
 
     retrieved_at = datetime.now(UTC)
     fallback_currency = expected
     cards: list[OptionCard] = []
+
+    def _meta_for(
+        option: ParsedTransportOption,
+    ) -> tuple[ParsedTransportOption, FxConversion | None]:
+        if id(option) in fx_meta:
+            return fx_meta[id(option)]
+        return option, None
 
     for option in unpriced:
         card = await _persist_transport_option(
@@ -280,10 +356,12 @@ async def persist_transport_research(
             leg_id=leg_id,
             tier=None,
             option=option,
+            source_option=option,
             raw_response_id=raw.id,
             research_run_id=research_run_id,
             retrieved_at=retrieved_at,
             card_currency=fallback_currency,
+            fx=None,
         )
         cards.append(card)
 
@@ -294,38 +372,46 @@ async def persist_transport_research(
             leg_id=leg_id,
             tier=None,
             option=option,
+            source_option=option,
             raw_response_id=raw.id,
             research_run_id=research_run_id,
             retrieved_at=retrieved_at,
             card_currency=option.estimated_price_currency,
+            fx=None,
         )
         cards.append(card)
 
     for option in untiered_home:
+        source_option, fx = _meta_for(option)
         assert option.estimated_price_currency is not None
         card = await _persist_transport_option(
             session,
             leg_id=leg_id,
             tier=None,
             option=option,
+            source_option=source_option,
             raw_response_id=raw.id,
             research_run_id=research_run_id,
             retrieved_at=retrieved_at,
             card_currency=option.estimated_price_currency,
+            fx=fx,
         )
         cards.append(card)
 
     for tier, option in tiered_priced:
+        source_option, fx = _meta_for(option)
         assert option.estimated_price_currency is not None
         card = await _persist_transport_option(
             session,
             leg_id=leg_id,
             tier=tier,
             option=option,
+            source_option=source_option,
             raw_response_id=raw.id,
             research_run_id=research_run_id,
             retrieved_at=retrieved_at,
             card_currency=option.estimated_price_currency,
+            fx=fx,
         )
         cards.append(card)
 

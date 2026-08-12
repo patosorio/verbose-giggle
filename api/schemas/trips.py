@@ -33,6 +33,7 @@ class TripSummaryOut(BaseModel):
 
     id: UUID
     name: str
+    organizer_id: UUID
     home_currency: str
     budget_band: BudgetBand
     budget_target_amount: Decimal | None
