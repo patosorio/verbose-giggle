@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     anthropic_activities_max_retries: int = 1
     anthropic_activities_max_tokens: int = 8192
 
+    # AI trip advisor (docs/26_ai_trip_advisor_cursor_prompt.md §0).
+    # VERIFY: confirm against Anthropic console before running — do not assume this
+    # alias matches a live model ID just because it mirrors the Sonnet setting style.
+    anthropic_advisor_model: str = "claude-haiku-5"
+    anthropic_advisor_max_tokens: int = 1024
+    anthropic_advisor_max_turns: int = 20
+
     fx_api_base_url: str = "https://api.frankfurter.app"
 
     access_token_ttl_seconds: int = 60 * 60 * 24 * 7

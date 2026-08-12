@@ -106,6 +106,7 @@ class LegCreateIn(BaseModel):
     end_date: date
     filters: LegFiltersIn = Field(default_factory=LegFiltersIn)
     skip_hotel: bool = False
+    skip_flight: bool = False
 
     @model_validator(mode="after")
     def validate_date_range(self) -> "LegCreateIn":
@@ -125,6 +126,7 @@ class LegPatchIn(BaseModel):
     destination_iata: str | None = Field(default=None, min_length=3, max_length=3)
     filters: LegFiltersIn | None = None
     skip_hotel: bool | None = None
+    skip_flight: bool | None = None
 
     @model_validator(mode="after")
     def validate_date_range(self) -> "LegPatchIn":
@@ -152,4 +154,5 @@ class LegOut(BaseModel):
     nights: int
     filters: LegFiltersIn
     skip_hotel: bool
+    skip_flight: bool
     status: LegStatus

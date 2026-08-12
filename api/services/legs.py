@@ -64,6 +64,7 @@ async def bulk_create_legs(
                 nights=derive_nights(leg_in.start_date, leg_in.end_date),
                 filters=leg_in.filters.model_dump(mode="json"),
                 skip_hotel=leg_in.skip_hotel,
+                skip_flight=leg_in.skip_flight,
                 status=LegStatus.pending,
             )
             session.add(leg)

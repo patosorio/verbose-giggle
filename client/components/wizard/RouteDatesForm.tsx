@@ -5,27 +5,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 
+import { LegRouteFields, legRouteFieldsSchema } from "@/components/legs/LegRouteFields";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useBulkCreateLegs } from "@/hooks/use-trips";
 import { ApiError } from "@/lib/api-client";
 import type { LegBulkCreateIn, LegOut } from "@/lib/types";
 
-const legRowSchema = z
-  .object({
-    origin: z.string().trim().min(1, "Origin is required"),
-    destination: z.string().trim().min(1, "Destination is required"),
-    start_date: z.string().min(1, "Start date is required"),
-    end_date: z.string().min(1, "End date is required"),
-  })
-  .refine((row) => row.end_date >= row.start_date, {
-    message: "End date must be on or after start date",
-    path: ["end_date"],
-  });
-
 const formSchema = z.object({
-  legs: z.array(legRowSchema).min(1, "Add at least one leg"),
+  legs: z.array(legRouteFieldsSchema).min(1, "Add at least one leg"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -110,64 +97,11 @@ export function RouteDatesForm({
               )}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`legs.${index}.origin`}>Origin</Label>
-                <Input
-                  id={`legs.${index}.origin`}
-                  placeholder="Bangkok"
-                  aria-invalid={!!errors.legs?.[index]?.origin}
-                  {...register(`legs.${index}.origin`)}
-                />
-                {errors.legs?.[index]?.origin && (
-                  <p className="text-sm text-destructive">
-                    {errors.legs[index]?.origin?.message}
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`legs.${index}.destination`}>Destination</Label>
-                <Input
-                  id={`legs.${index}.destination`}
-                  placeholder="Phuket"
-                  aria-invalid={!!errors.legs?.[index]?.destination}
-                  {...register(`legs.${index}.destination`)}
-                />
-                {errors.legs?.[index]?.destination && (
-                  <p className="text-sm text-destructive">
-                    {errors.legs[index]?.destination?.message}
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`legs.${index}.start_date`}>Start date</Label>
-                <Input
-                  id={`legs.${index}.start_date`}
-                  type="date"
-                  aria-invalid={!!errors.legs?.[index]?.start_date}
-                  {...register(`legs.${index}.start_date`)}
-                />
-                {errors.legs?.[index]?.start_date && (
-                  <p className="text-sm text-destructive">
-                    {errors.legs[index]?.start_date?.message}
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`legs.${index}.end_date`}>End date</Label>
-                <Input
-                  id={`legs.${index}.end_date`}
-                  type="date"
-                  aria-invalid={!!errors.legs?.[index]?.end_date}
-                  {...register(`legs.${index}.end_date`)}
-                />
-                {errors.legs?.[index]?.end_date && (
-                  <p className="text-sm text-destructive">
-                    {errors.legs[index]?.end_date?.message}
-                  </p>
-                )}
-              </div>
-            </div>
+            <LegRouteFields
+              legIndex={index}
+              register={register}
+              errors={errors.legs?.[index]}
+            />
           </li>
         ))}
       </ul>

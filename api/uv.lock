@@ -7,6 +7,15 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "airportsdata"
+version = "20260803"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/06/80/ab3b3b5939301c92a6553ffe478150b5c709ed5eb6e4289fec94b6b75b5f/airportsdata-20260803.tar.gz", hash = "sha256:418e42c21b24820429ca23149a825fee24784caed6a2a1ecee7e049f76cbf5b0", size = 928138, upload-time = "2026-08-03T02:09:11.406Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5d/12/d910568fb61ebcde550cc6bdc952fb9c43ae5935331c0e8db28da7e67976/airportsdata-20260803-py3-none-any.whl", hash = "sha256:e741bf85b85d1915ddfa540973d1f4360ea705031873a405fba16c04e9c811f5", size = 930818, upload-time = "2026-08-03T02:09:09.713Z" },
+]
+
+[[package]]
 name = "alembic"
 version = "1.19.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1047,6 +1056,7 @@ name = "travelagency-api"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "airportsdata" },
     { name = "alembic" },
     { name = "anthropic" },
     { name = "asyncpg" },
@@ -1070,6 +1080,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "airportsdata", specifier = ">=20260803" },
     { name = "alembic", specifier = ">=1.19.0" },
     { name = "anthropic", specifier = ">=0.121.0" },
     { name = "asyncpg", specifier = ">=0.31.0" },

@@ -357,7 +357,7 @@ async def run_leg_research(
     fetch_kinds: list[FetchKind] = []
     fetch_coros: list[Awaitable[FetchResult]] = []
 
-    if _includes(run_type, "flights"):
+    if _includes(run_type, "flights") and not leg.skip_flight:
         if leg.origin_iata and leg.destination_iata:
             fetch_kinds.append("flights")
             fetch_coros.append(
@@ -382,6 +382,12 @@ async def run_leg_research(
                 leg.origin_iata,
                 leg.destination_iata,
             )
+    elif _includes(run_type, "flights") and leg.skip_flight:
+        logger.info(
+            "flight_search_skipped skip_flight=true trace_id=%s leg_id=%s",
+            trace_id,
+            leg_id,
+        )
 
     hotel_room_specs: list[tuple[list[int], RoomOccupancyIn]] = []
     if _includes(run_type, "hotels") and not leg.skip_hotel:

@@ -12,6 +12,7 @@ import type {
   ResearchStartOut,
   TravelerCreateIn,
   TravelerOut,
+  TripCreateIn,
   TripMemberCreateIn,
   TripMemberOut,
   TripOut,
@@ -26,6 +27,23 @@ export function useTrips() {
     queryKey: ["trips"],
     queryFn: () => apiFetch<TripSummaryOut[]>("/trips", { token: accessToken }),
     enabled: status === "authenticated" && !!accessToken,
+  });
+}
+
+export function useCreateTrip() {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: TripCreateIn) =>
+      apiFetch<TripOut>("/trips", {
+        method: "POST",
+        body,
+        token: accessToken,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trips"] });
+    },
   });
 }
 

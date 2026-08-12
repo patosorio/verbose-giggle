@@ -235,6 +235,7 @@ class Leg(Base):
     nights: Mapped[int] = mapped_column(Integer, nullable=False)
     filters: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     skip_hotel: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    skip_flight: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     status: Mapped[LegStatus] = mapped_column(_pg_enum(LegStatus, "leg_status"), nullable=False)
 
 

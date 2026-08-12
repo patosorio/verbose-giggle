@@ -88,6 +88,7 @@ export interface LegOut {
   nights: number;
   filters: Record<string, unknown>;
   skip_hotel: boolean;
+  skip_flight: boolean;
   status: LegStatus;
 }
 
@@ -101,6 +102,7 @@ export interface LegCreateIn {
   start_date: string;
   end_date: string;
   skip_hotel?: boolean;
+  skip_flight?: boolean;
   /** Only fields Prompt 1 wires into SerpApi — omit empty sub-objects. */
   filters?: {
     flight?: {
@@ -134,6 +136,7 @@ export interface LegPatchIn {
   destination_iata?: string | null;
   filters?: LegCreateIn["filters"];
   skip_hotel?: boolean;
+  skip_flight?: boolean;
 }
 
 export interface ResearchStartOut {
@@ -304,3 +307,54 @@ export type OptionCardOut =
   | ActivityOptionOut
   | TransportOptionOut
   | ImportedOptionOut;
+
+/** POST /advisor/messages — mirrors api/schemas/advisor.py */
+export interface AirportCandidateOut {
+  iata: string;
+  name: string;
+  city: string;
+  country: string;
+}
+
+export interface AdvisorMessageIn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AdvisorLegIn {
+  origin: string;
+  destination: string;
+  start_date: string | null;
+  end_date: string | null;
+  filters?: LegCreateIn["filters"];
+  skip_hotel?: boolean;
+  skip_flight?: boolean;
+  locked?: boolean;
+}
+
+export interface ProposedLegOut extends AdvisorLegIn {
+  origin_iata: string | null;
+  origin_candidates: AirportCandidateOut[];
+  destination_iata: string | null;
+  destination_candidates: AirportCandidateOut[];
+}
+
+export interface AdvisorTurnIn {
+  messages: AdvisorMessageIn[];
+  current_legs: AdvisorLegIn[];
+  /** Finalized legs — read-only context; omitted from model revise set. */
+  locked_legs?: AdvisorLegIn[];
+  trip_name: string | null;
+  home_currency: string | null;
+  budget_band: BudgetBand | null;
+  budget_target_amount: number | null;
+}
+
+export interface AdvisorTurnResponse {
+  reply: string;
+  legs: ProposedLegOut[];
+  trip_name: string | null;
+  home_currency: string | null;
+  budget_band: BudgetBand | null;
+  budget_target_amount: number | null | string;
+}
