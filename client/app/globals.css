@@ -164,7 +164,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-surface-alt text-foreground;
   }
   html {
     @apply font-body;

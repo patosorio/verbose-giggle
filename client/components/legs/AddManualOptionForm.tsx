@@ -122,7 +122,7 @@ export function AddManualOptionForm({
         <Label htmlFor="manual-category">Type</Label>
         <select
           id="manual-category"
-          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="h-8 w-full rounded-lg border border-border-interactive bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           aria-invalid={!!errors.category}
           {...register("category")}
         >
@@ -141,7 +141,7 @@ export function AddManualOptionForm({
         <Label htmlFor="manual-tier">Tier</Label>
         <select
           id="manual-tier"
-          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="h-8 w-full rounded-lg border border-border-interactive bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           aria-invalid={!!errors.tier}
           {...register("tier")}
         >
@@ -170,7 +170,7 @@ export function AddManualOptionForm({
           rows={3}
           placeholder="Driver name, pickup notes…"
           aria-invalid={!!errors.description}
-          className="w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="w-full min-w-0 rounded-lg border border-border-interactive bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           {...register("description")}
         />
         {errors.description && (

@@ -68,21 +68,26 @@ export default function TripPage() {
 
   return (
     <div className="flex w-full flex-col gap-8 p-6 md:px-10">
-      <TripHeader
-        trip={trip}
-        legs={legs}
-        travelers={travelers}
-        isOrganizer={isOrganizer}
-        addLegsHref={`/trips/${tripId}/wizard`}
-        addLegsLabel={legs.length === 0 ? "Add legs in wizard" : "Add more legs"}
-      />
+      <div className="rounded-panel border border-border-soft bg-bg p-6 shadow-card">
+        <TripHeader
+          trip={trip}
+          legs={legs}
+          travelers={travelers}
+          isOrganizer={isOrganizer}
+          addLegsHref={`/trips/${tripId}/wizard`}
+          addLegsLabel={legs.length === 0 ? "Add legs in wizard" : "Add more legs"}
+        />
+      </div>
 
       {/* Main column stretches to the rail; turquoise CrewCard is its own right column. */}
       <div className="flex flex-col gap-8 md:flex-row md:items-start">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           {legs.length === 0 ? (
-            <section className="flex flex-col gap-3 rounded-panel border border-border-soft p-6 shadow-card">
-              <h2 className="font-display text-lg font-bold text-ink">Itinerary</h2>
+            <section className="flex flex-col gap-3 rounded-panel border border-border-soft bg-bg p-6 shadow-card">
+              <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+                <span className="size-1.5 rounded-full bg-coral-pink" />
+                Itinerary
+              </p>
               <p className="text-sm text-ink-muted">
                 No legs yet — use the wizard to add routes and start research.
               </p>

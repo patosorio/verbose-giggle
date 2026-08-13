@@ -73,7 +73,7 @@ function AirportResolutionUi({
         <span className="text-xs text-ink-muted">Pick {label} airport</span>
         <select
           key={resolution.candidates.map((c) => c.iata).join("-")}
-          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="h-9 rounded-[var(--radius-chip)] border border-border-interactive bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           defaultValue=""
           onChange={(event) => {
             const value = event.target.value;

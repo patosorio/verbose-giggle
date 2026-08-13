@@ -43,10 +43,11 @@ export function ItineraryBuilder({
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-4">
-        <h2 className="text-xs font-bold tracking-[0.14em] text-ink uppercase">
+      <section className="flex flex-col gap-4 rounded-card border border-border-soft bg-bg p-6 shadow-card">
+        <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+          <span className="size-1.5 rounded-full bg-turquoise" />
           Trip
-        </h2>
+        </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <Label htmlFor="trip_name">Trip name</Label>
@@ -83,7 +84,7 @@ export function ItineraryBuilder({
             <Label htmlFor="budget_band">Budget band</Label>
             <select
               id="budget_band"
-              className="h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="h-9 w-full rounded-[var(--radius-chip)] border border-border-interactive bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               aria-invalid={!!errors.budget_band}
               {...register("budget_band")}
             >
@@ -115,10 +116,11 @@ export function ItineraryBuilder({
         </div>
       </section>
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-xs font-bold tracking-[0.14em] text-ink uppercase">
+      <section className="flex flex-col gap-4 rounded-card border border-border-soft bg-bg p-6 shadow-card">
+        <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+          <span className="size-1.5 rounded-full bg-coral-pink" />
           Itinerary
-        </h2>
+        </p>
         {fields.length === 0 ? (
           <p className="text-sm text-ink-muted">
             No legs yet — chat with the advisor or add a leg manually.
@@ -249,6 +251,7 @@ export function ItineraryBuilder({
           <Button
             type="button"
             variant="outline"
+            className="rounded-pill border-border-interactive"
             onClick={() =>
               append({
                 origin: "",
@@ -267,8 +270,12 @@ export function ItineraryBuilder({
           >
             Add leg
           </Button>
-          <Button type="button" disabled={isConfirming} onClick={onConfirm}>
-            {isConfirming ? "Creating…" : "Confirm & start research"}
+          <Button
+            type="button"
+            disabled={isConfirming}
+            onClick={onConfirm}
+          >
+            {isConfirming ? "Creating…" : "Confirm & start research →"}
           </Button>
         </div>
       </section>

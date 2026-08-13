@@ -77,7 +77,7 @@ export const DEFAULT_LEG_FILTERS: LegFiltersFieldsShape = {
 };
 
 const selectClassName =
-  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "h-9 w-full rounded-[var(--radius-chip)] border border-border-interactive bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 type WithFilterLegs = FieldValues & { legs: LegFiltersFieldsShape[] };
 

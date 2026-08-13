@@ -9,7 +9,6 @@ import { useAuth } from "@/lib/auth-context";
 import { useDeleteTrip, useTrips } from "@/hooks/use-trips";
 import { ApiError } from "@/lib/api-client";
 import type { BudgetBand, TripStatus } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 function formatBudgetBand(band: BudgetBand): string {
   return band.charAt(0).toUpperCase() + band.slice(1);
@@ -65,13 +64,7 @@ export default function TripsPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-display text-2xl font-bold text-ink">Trips</h1>
-        <Link
-          href="/trips/new"
-          className={cn(
-            buttonVariants({ variant: "default" }),
-            "rounded-pill bg-coral-pink text-white hover:bg-coral-pink/90"
-          )}
-        >
+        <Link href="/trips/new" className={buttonVariants({ variant: "default" })}>
           New trip
         </Link>
       </div>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { AiTripPlanner } from "@/components/trips/AiTripPlanner";
-import { CreateTripForm } from "@/components/trips/CreateTripForm";
+import { ManualTripPlanner } from "@/components/trips/ManualTripPlanner";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +17,7 @@ export default function NewTripPage() {
     <div
       className={cn(
         "mx-auto flex w-full flex-col gap-6 p-6",
-        mode === "ai" ? "max-w-6xl" : "max-w-md"
+        mode === "manual" ? "max-w-3xl" : "max-w-6xl"
       )}
     >
       <div className="flex flex-col gap-2">
@@ -28,6 +28,9 @@ export default function NewTripPage() {
           ← Back to trips
         </Link>
         <h1 className="font-display text-2xl font-bold text-ink">New trip</h1>
+        <p className="text-sm text-ink-muted">
+          Chat with the advisor, or fill in the details yourself — either way you&apos;ll confirm before anything&apos;s booked.
+        </p>
       </div>
 
       <div
@@ -65,7 +68,7 @@ export default function NewTripPage() {
         </button>
       </div>
 
-      {mode === "manual" ? <CreateTripForm /> : <AiTripPlanner />}
+      {mode === "manual" ? <ManualTripPlanner /> : <AiTripPlanner />}
     </div>
   );
 }

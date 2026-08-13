@@ -21,8 +21,14 @@ import { formatPartySize } from "@/lib/format";
 import type { BudgetBand, LegOut, TravelerOut, TripOut, TripStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const sunshineActionClassName =
-  "border border-border-interactive bg-sunshine text-ink hover:bg-sunshine hover:brightness-[1.05] hover:text-ink";
+const editActionClassName =
+  "border border-border-interactive bg-bg text-ink hover:bg-surface-alt";
+
+const removeActionClassName =
+  "border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive";
+
+const addLegsActionClassName =
+  "border border-border-interactive bg-bg text-ink hover:bg-surface-alt";
 
 function statusEyebrow(status: TripStatus): string {
   switch (status) {
@@ -60,7 +66,7 @@ interface TripHeaderProps {
   legs: LegOut[];
   travelers: TravelerOut[];
   isOrganizer: boolean;
-  /** When set, Edit / Remove / Add-legs render as one sunshine action cluster. */
+  /** When set, renders the Add-legs outline pill alongside Edit / Remove. */
   addLegsHref?: string;
   addLegsLabel?: string;
 }
@@ -178,7 +184,7 @@ export function TripHeader({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className={sunshineActionClassName}
+                    className={editActionClassName}
                   />
                 }
               >
@@ -202,7 +208,7 @@ export function TripHeader({
                     <Label htmlFor="edit-trip-band">Budget band</Label>
                     <select
                       id="edit-trip-band"
-                      className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      className="h-9 w-full rounded-[var(--radius-chip)] border border-border-interactive bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                       value={budgetBand}
                       onChange={(event) =>
                         setBudgetBand(event.target.value as BudgetBand)
@@ -238,7 +244,7 @@ export function TripHeader({
               type="button"
               variant="outline"
               size="sm"
-              className={sunshineActionClassName}
+              className={removeActionClassName}
               disabled={deleteTrip.isPending}
               onClick={handleDelete}
             >
@@ -250,7 +256,7 @@ export function TripHeader({
                 href={addLegsHref}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "sm" }),
-                  sunshineActionClassName
+                  addLegsActionClassName
                 )}
               >
                 {addLegsLabel}

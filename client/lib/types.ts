@@ -316,6 +316,12 @@ export interface AirportCandidateOut {
   country: string;
 }
 
+/** GET /airports/resolve — mirrors api/schemas/airports.py */
+export interface AirportResolveOut {
+  resolved_iata: string | null;
+  candidates: AirportCandidateOut[];
+}
+
 export interface AdvisorMessageIn {
   role: "user" | "assistant";
   content: string;

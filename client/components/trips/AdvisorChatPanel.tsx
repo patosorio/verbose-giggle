@@ -188,29 +188,32 @@ export function AdvisorChatPanel({
   }
 
   return (
-    <div className="flex h-full min-h-[28rem] flex-col gap-3 rounded-card border border-border-soft bg-bg p-4 shadow-card">
-      <h2 className="text-xs font-bold tracking-[0.14em] text-ink uppercase">
+    <div className="flex h-full min-h-[28rem] flex-col gap-3 rounded-panel border border-border-soft bg-bg p-6 shadow-card">
+      <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+        <span className="size-1.5 rounded-full bg-sunshine" />
         Plan with AI
-      </h2>
-      <p className="text-sm text-ink-muted">
-        Chat revises unlocked legs only. Lock a leg to keep it out of the next AI
-        turn.
       </p>
-
-      <ul className="flex flex-1 flex-col gap-3 overflow-y-auto">
+      <div className="rounded-[var(--radius-chip)] bg-surface-alt p-3">
+        <p className="text-sm text-ink-muted">
+          Chat revises unlocked legs only. Lock a leg to keep it out of the next AI
+          turn.
+        </p>
         {messages.length === 0 ? (
-          <li className="text-sm text-ink-muted">
+          <p className="mt-2 text-sm text-ink-muted">
             Try “planning a trip to Thailand” — the advisor will ask clarifying
             questions instead of inventing dates.
-          </li>
+          </p>
         ) : null}
+      </div>
+
+      <ul className="flex flex-1 flex-col gap-2 overflow-y-auto">
         {messages.map((message, index) => (
           <li
             key={`${message.role}-${index}`}
             className={
               message.role === "user"
-                ? "self-end max-w-[90%] rounded-[16px] bg-[var(--turquoise)] px-3 py-2 text-sm text-white"
-                : "self-start max-w-[90%] rounded-[16px] border border-border-soft bg-[var(--surface-alt)] px-3 py-2 text-sm text-ink"
+                ? "self-end max-w-[90%] rounded-[var(--radius-card)] bg-ink px-3 py-2 text-sm text-white"
+                : "self-start max-w-[90%] rounded-[var(--radius-card)] border border-border-soft bg-surface-alt px-3 py-2 text-sm text-ink"
             }
           >
             {message.content}
@@ -218,9 +221,9 @@ export function AdvisorChatPanel({
         ))}
       </ul>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex items-end gap-2">
         <textarea
-          className="min-h-[5rem] w-full rounded-[16px] border border-border-interactive bg-bg px-3 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="min-h-[2.75rem] flex-1 resize-none rounded-[var(--radius-chip)] border border-border-interactive bg-bg px-3 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           placeholder="Describe the trip, or ask to change a leg…"
           value={draft}
           disabled={advisorTurn.isPending}
@@ -234,10 +237,11 @@ export function AdvisorChatPanel({
         />
         <Button
           type="button"
+          size="sm"
           disabled={advisorTurn.isPending || !draft.trim()}
           onClick={() => void onSend()}
         >
-          {advisorTurn.isPending ? "Thinking…" : "Send"}
+          {advisorTurn.isPending ? "…" : "Send"}
         </Button>
       </div>
     </div>

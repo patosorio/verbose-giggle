@@ -36,9 +36,12 @@ export function ItineraryPanel({ legs, budget }: ItineraryPanelProps) {
   const tripId = sortedLegs[0]?.trip_id;
 
   return (
-    <section className="flex flex-col gap-2 rounded-panel border border-border-soft p-6 shadow-card">
+    <section className="flex flex-col gap-3 rounded-panel border border-border-soft bg-bg p-6 shadow-card">
       <div className="flex items-baseline justify-between gap-4">
-        <h2 className="font-display text-lg font-bold text-ink">Itinerary</h2>
+        <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+          <span className="size-1.5 rounded-full bg-coral-pink" />
+          Itinerary
+        </p>
         {hasLockedOptions && tripId && (
           <Link
             href={`/trips/${tripId}/budget`}
@@ -48,7 +51,7 @@ export function ItineraryPanel({ legs, budget }: ItineraryPanelProps) {
           </Link>
         )}
       </div>
-      <ul className="flex flex-col divide-y divide-border">
+      <ul className="flex flex-col gap-2">
         {sortedLegs.map((leg) => {
           const entry = budgetByLeg.get(leg.id);
           const state = derivePillState(leg, entry?.locked_option_ids ?? []);
@@ -62,7 +65,7 @@ export function ItineraryPanel({ legs, budget }: ItineraryPanelProps) {
             <li key={leg.id}>
               <Link
                 href={`/trips/${leg.trip_id}/legs/${leg.id}`}
-                className="flex items-center justify-between gap-4 py-3 transition-colors hover:text-turquoise"
+                className="flex items-center justify-between gap-4 rounded-card border border-border-soft bg-surface-alt px-4 py-3 transition-colors hover:text-turquoise"
               >
                 <div className="flex flex-col gap-0.5">
                   <span
