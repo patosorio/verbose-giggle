@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAdvisorTurn } from "@/hooks/use-advisor";
 import { ApiError } from "@/lib/api-client";
+import { apiFiltersToFormFields, formLegToApiFilters } from "@/lib/leg-filters-map";
 import type {
   AdvisorLegIn,
   AdvisorTurnResponse,
@@ -36,32 +37,7 @@ interface AdvisorChatPanelProps {
 function buildFiltersFromLeg(
   leg: AiPlannerFormValues["legs"][number]
 ): AdvisorLegIn["filters"] {
-  const flight: NonNullable<AdvisorLegIn["filters"]>["flight"] = {};
-  if (leg.max_stops !== undefined) flight.max_stops = leg.max_stops;
-  if (leg.max_price !== undefined) flight.max_price = leg.max_price;
-
-  const hotel: NonNullable<AdvisorLegIn["filters"]>["hotel"] = {};
-  if (leg.star_class.length > 0) hotel.star_class = leg.star_class;
-  if (leg.free_cancellation_only) hotel.free_cancellation_only = true;
-  if (leg.hotel_price_min !== undefined && leg.hotel_price_max !== undefined) {
-    hotel.price_range = {
-      min: leg.hotel_price_min,
-      max: leg.hotel_price_max,
-    };
-  }
-
-  const filters: NonNullable<AdvisorLegIn["filters"]> = {
-    occupancy: {
-      rooms: leg.rooms.map((room) => ({
-        adults: room.adults,
-        children: room.children,
-        children_ages: room.children_ages.slice(0, room.children),
-      })),
-    },
-  };
-  if (Object.keys(flight).length > 0) filters.flight = flight;
-  if (Object.keys(hotel).length > 0) filters.hotel = hotel;
-  return filters;
+  return formLegToApiFilters(leg);
 }
 
 function formLegToAdvisor(
@@ -88,6 +64,7 @@ function proposedToFormLeg(leg: ProposedLegOut): AiPlannerFormValues["legs"][num
     })) ?? [{ ...DEFAULT_LEG_FILTERS.rooms[0], children_ages: [] }];
 
   return {
+    ...DEFAULT_LEG_FILTERS,
     origin: leg.origin,
     destination: leg.destination,
     start_date: leg.start_date ?? "",
@@ -99,14 +76,9 @@ function proposedToFormLeg(leg: ProposedLegOut): AiPlannerFormValues["legs"][num
       leg.destination_candidates ?? ([] as AirportCandidateOut[]),
     locked: false,
     rooms,
-    max_stops: leg.filters?.flight?.max_stops,
-    max_price: leg.filters?.flight?.max_price,
     skip_hotel: leg.skip_hotel ?? false,
     skip_flight: leg.skip_flight ?? false,
-    star_class: leg.filters?.hotel?.star_class ?? [],
-    free_cancellation_only: leg.filters?.hotel?.free_cancellation_only ?? false,
-    hotel_price_min: leg.filters?.hotel?.price_range?.min,
-    hotel_price_max: leg.filters?.hotel?.price_range?.max,
+    ...apiFiltersToFormFields(leg.filters),
   };
 }
 

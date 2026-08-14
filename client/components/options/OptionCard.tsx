@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { PopoverContent, Popover, PopoverTrigger } from "@/components/ui/popover";
 import { useOptionCitations, useOptionSources, useRemoveReaction, useSetReaction } from "@/hooks/use-options";
 import { formatCurrency } from "@/lib/format";
-import type { BookingSourceOut, CitationOut, OptionCardOut, OptionType, ReactionType } from "@/lib/types";
+import type { BookingSourceOut, CitationOut, OptionCardOut, OptionSourcesOut, OptionType, ReactionType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function formatDuration(minutes: number): string {
@@ -178,8 +178,11 @@ export function SourcesTag({ optionId, kind }: { optionId: string; kind: Sources
   // leg means N extra requests if this were eager on page load).
   const sourcesQuery = useOptionSources(optionId, hasOpened && kind === "sources");
   const citationsQuery = useOptionCitations(optionId, hasOpened && kind === "citations");
-  const query = kind === "sources" ? sourcesQuery : citationsQuery;
-  const count = query.data?.length;
+  const sources = (sourcesQuery.data as OptionSourcesOut | undefined)?.sources;
+  const citations = citationsQuery.data as CitationOut[] | undefined;
+  const count = kind === "sources" ? sources?.length : citations?.length;
+  const isLoading = kind === "sources" ? sourcesQuery.isLoading : citationsQuery.isLoading;
+  const isError = kind === "sources" ? sourcesQuery.isError : citationsQuery.isError;
 
   return (
     <Popover onOpenChange={(open) => open && setHasOpened(true)}>
@@ -190,36 +193,40 @@ export function SourcesTag({ optionId, kind }: { optionId: string; kind: Sources
         {count !== undefined ? `${count} source${count === 1 ? "" : "s"}` : "Sources"}
       </PopoverTrigger>
       <PopoverContent align="end" onClick={(event: MouseEvent) => event.stopPropagation()}>
-        {query.isLoading ? (
+        {isLoading ? (
           <p className="text-sm text-ink-muted">Loading…</p>
-        ) : query.isError ? (
+        ) : isError ? (
           <p className="text-sm text-destructive">Could not load {kind}.</p>
-        ) : !query.data || query.data.length === 0 ? (
-          <p className="text-sm text-ink-muted">No {kind} yet.</p>
         ) : kind === "sources" ? (
-          <ul className="flex flex-col gap-3">
-            {(query.data as BookingSourceOut[]).map((source, index) => (
-              <li key={index} className="flex flex-col gap-0.5">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-ink">{source.seller_name}</span>
-                  <span className="text-sm font-bold text-ink">
-                    {formatCurrency(source.price_amount, source.currency)}
-                  </span>
-                </div>
-                <a
-                  href={source.deep_link_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-turquoise underline underline-offset-2"
-                >
-                  View booking link
-                </a>
-              </li>
-            ))}
-          </ul>
+          !sources || sources.length === 0 ? (
+            <p className="text-sm text-ink-muted">No {kind} yet.</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {sources.map((source: BookingSourceOut, index: number) => (
+                <li key={index} className="flex flex-col gap-0.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-ink">{source.seller_name}</span>
+                    <span className="text-sm font-bold text-ink">
+                      {formatCurrency(source.price_amount, source.currency)}
+                    </span>
+                  </div>
+                  <a
+                    href={source.deep_link_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-turquoise underline underline-offset-2"
+                  >
+                    View booking link
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : !citations || citations.length === 0 ? (
+          <p className="text-sm text-ink-muted">No {kind} yet.</p>
         ) : (
           <ul className="flex flex-col gap-3">
-            {(query.data as CitationOut[]).map((citation, index) => (
+            {citations.map((citation, index) => (
               <li key={index} className="flex flex-col gap-0.5">
                 <p className="text-sm text-ink">{citation.claim_text}</p>
                 <a

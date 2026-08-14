@@ -103,16 +103,46 @@ export interface LegCreateIn {
   end_date: string;
   skip_hotel?: boolean;
   skip_flight?: boolean;
-  /** Only fields Prompt 1 wires into SerpApi — omit empty sub-objects. */
   filters?: {
     flight?: {
       max_stops?: number;
       max_price?: number;
+      deep_search?: boolean | null;
+      travel_class?: 1 | 2 | 3 | 4 | null;
+      show_hidden?: boolean;
+      exclude_basic?: boolean;
+      sort_by?: 1 | 2 | 3 | 4 | 5 | 6 | null;
+      include_airlines?: string[] | null;
+      exclude_airlines?: string[] | null;
+      bags?: number | null;
+      time_windows?: {
+        departure_start_hour?: number | null;
+        departure_end_hour?: number | null;
+        arrival_start_hour?: number | null;
+        arrival_end_hour?: number | null;
+      } | null;
+      emissions?: boolean;
+      layover_min_minutes?: number | null;
+      layover_max_minutes?: number | null;
+      exclude_conns?: string[] | null;
+      max_duration_minutes?: number | null;
+      infants_in_seat?: number | null;
+      infants_on_lap?: number | null;
     };
     hotel?: {
       star_class?: number[];
       free_cancellation_only?: boolean;
+      special_offers_only?: boolean;
+      eco_certified_only?: boolean;
       price_range?: { min: number; max: number };
+      property_types?: number[] | null;
+      amenity_ids?: number[] | null;
+      min_rating?: 7 | 8 | 9 | null;
+      sort_by?: 3 | 8 | 13 | null;
+      brands?: number[] | null;
+      vacation_rentals?: boolean;
+      bedrooms?: number | null;
+      bathrooms?: number | null;
     };
     occupancy?: {
       rooms: {
@@ -156,6 +186,28 @@ export interface LockedOptionSummaryOut {
   unit_price_amount: string | null;
   party_size: number | null;
   room_label: string | null;
+  gps_lat?: string | null;
+  gps_lng?: string | null;
+  thumbnail_url?: string | null;
+  star_rating?: string | null;
+  amenities?: string[] | null;
+  checkin_date?: string | null;
+  checkout_date?: string | null;
+  category?: string | null;
+  description?: string | null;
+  duration_minutes?: number | null;
+  departure_airport?: string | null;
+  arrival_airport?: string | null;
+  departure_time?: string | null;
+  arrival_time?: string | null;
+  stops?: number | null;
+  airlines?: string[] | null;
+  bags_included?: boolean | null;
+  mode?: TransportMode | null;
+  operator_name?: string | null;
+  departure_point?: string | null;
+  arrival_point?: string | null;
+  booking_url?: string | null;
 }
 
 export interface BudgetLegOut {
@@ -190,6 +242,16 @@ export interface BookingSourceOut {
   deep_link_url: string;
   booking_post_data: Record<string, unknown> | null;
   fetched_at: string;
+}
+
+export interface HotelDetailsOut {
+  description: string | null;
+  image_thumbnails: string[];
+}
+
+export interface OptionSourcesOut {
+  sources: BookingSourceOut[];
+  hotel_details: HotelDetailsOut | null;
 }
 
 export interface CitationOut {
@@ -262,6 +324,7 @@ export interface HotelOptionOut extends OptionCardCoreOut {
   eco_certified: boolean;
   amenities: string[];
   room_label: string | null;
+  thumbnail_url: string | null;
 }
 
 export interface ActivityOptionOut extends OptionCardCoreOut {

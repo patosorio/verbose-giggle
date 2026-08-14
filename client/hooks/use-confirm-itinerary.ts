@@ -13,37 +13,13 @@ import {
 import { useCreateTrip } from "@/hooks/use-trips";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
+import { formLegToApiFilters } from "@/lib/leg-filters-map";
 import type { LegCreateIn, LegOut, ResearchStartOut } from "@/lib/types";
 
 function buildLegCreateFilters(
   leg: AiPlannerFormValues["legs"][number]
 ): LegCreateIn["filters"] {
-  const flight: NonNullable<LegCreateIn["filters"]>["flight"] = {};
-  if (leg.max_stops !== undefined) flight.max_stops = leg.max_stops;
-  if (leg.max_price !== undefined) flight.max_price = leg.max_price;
-
-  const hotel: NonNullable<LegCreateIn["filters"]>["hotel"] = {};
-  if (leg.star_class.length > 0) hotel.star_class = leg.star_class;
-  if (leg.free_cancellation_only) hotel.free_cancellation_only = true;
-  if (leg.hotel_price_min !== undefined && leg.hotel_price_max !== undefined) {
-    hotel.price_range = {
-      min: leg.hotel_price_min,
-      max: leg.hotel_price_max,
-    };
-  }
-
-  const filters: NonNullable<LegCreateIn["filters"]> = {
-    occupancy: {
-      rooms: leg.rooms.map((room) => ({
-        adults: room.adults,
-        children: room.children,
-        children_ages: room.children_ages.slice(0, room.children),
-      })),
-    },
-  };
-  if (Object.keys(flight).length > 0) filters.flight = flight;
-  if (Object.keys(hotel).length > 0) filters.hotel = hotel;
-  return filters;
+  return formLegToApiFilters(leg);
 }
 
 export function useConfirmItinerary() {

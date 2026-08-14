@@ -5,11 +5,11 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import type {
-  BookingSourceOut,
   CitationOut,
   ImportedOptionOut,
   ManualOptionIn,
   OptionCardOut,
+  OptionSourcesOut,
   ReactionIn,
   ReactionSummaryOut,
   ReactionType,
@@ -140,7 +140,7 @@ export function useOptionSources(optionId: string, enabled: boolean) {
   return useQuery({
     queryKey: ["options", optionId, "sources"],
     queryFn: () =>
-      apiFetch<BookingSourceOut[]>(`/options/${optionId}/sources`, { token: accessToken }),
+      apiFetch<OptionSourcesOut>(`/options/${optionId}/sources`, { token: accessToken }),
     enabled: enabled && status === "authenticated" && !!accessToken && !!optionId,
   });
 }
