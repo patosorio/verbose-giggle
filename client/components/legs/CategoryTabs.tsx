@@ -61,7 +61,7 @@ export function CategoryTabs({
               "rounded-pill px-4 py-1.5 text-sm font-medium transition-[filter] hover:brightness-[1.08]",
               isActive
                 ? "bg-turquoise text-white"
-                : "bg-surface-alt text-ink border border-border-interactive"
+                : "border border-border-interactive bg-bg text-ink"
             )}
           >
             {OPTION_TYPE_LABEL[type]}

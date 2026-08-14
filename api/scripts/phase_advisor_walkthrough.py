@@ -56,7 +56,8 @@ async def main() -> int:
         budget_target_amount=None,
     )
     result = await run_advisor_turn(turn, trace_id="advisor-walkthrough-1")
-    logger.info("reply=%s", result.reply)
+    logger.info("action=%s reply=%s", result.action, result.reply)
+    logger.info("questions=%s", result.questions)
     logger.info("legs_count=%s trip_name=%s budget_band=%s", len(result.legs), result.trip_name, result.budget_band)
     for index, leg in enumerate(result.legs):
         logger.info(

@@ -139,7 +139,7 @@ export function BudgetSidebar({
   }
 
   return (
-    <div className="rounded-panel border border-border-soft p-6 shadow-card">
+    <div className="rounded-panel border border-border-soft bg-bg p-6 shadow-card">
       <h2 className="font-display text-lg font-extrabold text-ink">Trip budget</h2>
       <p className="mb-4 text-sm text-ink-muted">
         {capitalize(budget.budget_band)} band · {budget.home_currency}
@@ -265,7 +265,7 @@ export function BudgetSidebar({
           type="button"
           onClick={onUnlock}
           disabled={isMutating}
-          className="mt-5 w-full rounded-pill bg-surface-alt py-3.5 font-display text-sm font-bold text-ink transition-opacity disabled:opacity-60"
+          className="mt-5 w-full rounded-pill border border-border-interactive bg-bg py-3.5 font-display text-sm font-bold text-ink transition-opacity disabled:opacity-60"
         >
           {isMutating ? "Unlocking…" : `Unlock ${currentLeg.destination} option`}
         </button>

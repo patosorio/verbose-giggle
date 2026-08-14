@@ -120,20 +120,20 @@ function OptionRow({
     >
       <td className={cn("px-3 py-3 align-middle", accentClass)}>
         {option.tier === null ? (
-          <span className="text-sm text-ink-muted">—</span>
+          <span className="text-[13px] text-ink-muted">—</span>
         ) : (
           <span className="flex items-center gap-2">
             <span
               className={cn("size-2.5 shrink-0 rounded-full", TIER_DOT_CLASS[option.tier])}
               aria-hidden
             />
-            <span className="text-sm text-ink">{TIER_LABEL[option.tier]}</span>
+            <span className="text-[13px] text-ink">{TIER_LABEL[option.tier]}</span>
           </span>
         )}
       </td>
       <td className="px-3 py-3 align-middle">
         <div className="flex flex-col gap-0.5">
-          <span className="font-heading text-sm font-medium text-ink">{option.title}</span>
+          <span className="font-heading text-[13px] font-medium text-ink">{option.title}</span>
           {option.option_type === "imported" && (
             <span className="text-[10px] font-bold tracking-wider text-ink-muted uppercase">
               Added by you
@@ -141,17 +141,33 @@ function OptionRow({
           )}
         </div>
       </td>
-      <td className="px-3 py-3 align-middle text-sm text-ink-muted">{metaLine(option)}</td>
+      <td className="px-3 py-3 align-middle text-[13px] text-ink-muted">
+        {option.option_type === "hotel" ? (
+          <div className="flex flex-col gap-0.5">
+            <span>{`${option.star_rating}★`}</span>
+            <span className="text-[11px]">
+              {option.eco_certified
+                ? "Eco-certified"
+                : option.free_cancellation
+                  ? "Free cancellation"
+                  : "Non-refundable"}
+            </span>
+            {option.room_label ? (
+              <span className="text-[11px]">{option.room_label}</span>
+            ) : null}
+          </div>
+        ) : (
+          metaLine(option)
+        )}
+      </td>
       <td className="px-3 py-3 text-right align-middle">
         <div className="flex flex-col items-end gap-0.5">
-          <span className="font-heading text-sm font-bold text-ink">
-            {price.main}
-            {price.suffix && (
-              <span className="text-xs font-normal text-ink-muted">{price.suffix}</span>
-            )}
-          </span>
+          <span className="font-heading text-[13px] font-bold text-ink">{price.main}</span>
+          {price.suffix && (
+            <span className="text-[11px] font-normal text-ink-muted">{price.suffix.replace(/^\//, "")}</span>
+          )}
           {price.breakdown && (
-            <span className="text-xs text-ink-muted">{price.breakdown}</span>
+            <span className="text-[11px] text-ink-muted">{price.breakdown}</span>
           )}
           {option.option_type === "transport" && option.booking_url && (
             <a
@@ -159,7 +175,7 @@ function OptionRow({
               target="_blank"
               rel="noopener noreferrer"
               onClick={stop(() => {})}
-              className="text-xs text-turquoise underline underline-offset-2"
+              className="text-[11px] text-turquoise underline underline-offset-2"
             >
               Book directly →
             </a>
@@ -178,7 +194,7 @@ function OptionRow({
           {up > 0 && (
             <span
               className={cn(
-                "text-xs font-bold",
+                "text-[11px] font-bold",
                 my_reaction === "up" ? "text-coral-pink" : "text-ink-muted"
               )}
             >
@@ -195,7 +211,7 @@ function OptionRow({
           {down > 0 && (
             <span
               className={cn(
-                "text-xs font-bold",
+                "text-[11px] font-bold",
                 my_reaction === "down" ? "text-coral-pink" : "text-ink-muted"
               )}
             >
@@ -213,12 +229,12 @@ function OptionRow({
             target="_blank"
             rel="noopener noreferrer"
             onClick={stop(() => {})}
-            className="text-xs text-turquoise underline underline-offset-2"
+            className="text-[11px] text-turquoise underline underline-offset-2"
           >
             View source
           </a>
         ) : (
-          <span className="text-sm text-ink-muted">—</span>
+          <span className="text-[13px] text-ink-muted">—</span>
         )}
       </td>
       <td className="px-3 py-3 text-right align-middle">
@@ -239,10 +255,10 @@ function OptionRow({
                 "rounded-pill px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase disabled:pointer-events-none disabled:opacity-60",
                 isBooked
                   ? "bg-turquoise text-white"
-                  : "border border-border-interactive bg-surface-alt text-ink"
+                  : "border border-border-interactive bg-bg text-ink"
               )}
             >
-              {isBooked ? "Booked ✓" : "Mark booked"}
+              {isBooked ? "Booked" : "Mark booked"}
             </button>
           </div>
         ) : isSelected ? (
@@ -268,10 +284,10 @@ export function OptionsTable({
   const lockedIds = new Set(lockedOptionIds);
 
   return (
-    <div className="overflow-x-auto rounded-card border border-border-soft shadow-card">
+    <div className="overflow-x-auto rounded-card border border-border-soft bg-bg shadow-card">
       <table className="w-full min-w-[42rem] border-collapse text-left">
         <thead>
-          <tr className="bg-surface-alt">
+          <tr className="border-b border-border-soft bg-bg">
             {(
               ["Tier", "Option", "Details", "Price", "Reactions", "Sources", "Status"] as const
             ).map((label) => (

@@ -65,7 +65,7 @@ export function ItineraryPanel({ legs, budget }: ItineraryPanelProps) {
             <li key={leg.id}>
               <Link
                 href={`/trips/${leg.trip_id}/legs/${leg.id}`}
-                className="flex items-center justify-between gap-4 rounded-card border border-border-soft bg-surface-alt px-4 py-3 transition-colors hover:text-turquoise"
+                className="flex items-center justify-between gap-4 rounded-card border border-border-soft bg-bg px-4 py-3 transition-colors hover:text-turquoise"
               >
                 <div className="flex flex-col gap-0.5">
                   <span

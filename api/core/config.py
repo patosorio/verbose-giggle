@@ -32,7 +32,8 @@ class Settings(BaseSettings):
     # VERIFY: confirm against Anthropic console before running — do not assume this
     # alias matches a live model ID just because it mirrors the Sonnet setting style.
     anthropic_advisor_model: str = "claude-haiku-5"
-    anthropic_advisor_max_tokens: int = 1024
+    # Reply markdown + questions, or a multi-leg revise payload — 1024 squeezed the chat.
+    anthropic_advisor_max_tokens: int = 4096
     anthropic_advisor_max_turns: int = 20
 
     fx_api_base_url: str = "https://api.frankfurter.app"

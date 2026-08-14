@@ -9,14 +9,14 @@ import { ItineraryBuilder } from "@/components/trips/ItineraryBuilder";
 import {
   AI_PLANNER_DEFAULTS,
   aiPlannerDraftFormSchema,
+  type AdvisorChatLine,
   type AiPlannerFormValues,
 } from "@/components/trips/ai-planner-types";
 import { useConfirmItinerary } from "@/hooks/use-confirm-itinerary";
-import type { AdvisorMessageIn } from "@/lib/types";
 
 export function AiTripPlanner() {
   const { confirm, isConfirming } = useConfirmItinerary();
-  const [messages, setMessages] = useState<AdvisorMessageIn[]>([]);
+  const [messages, setMessages] = useState<AdvisorChatLine[]>([]);
 
   const {
     register,
@@ -49,6 +49,7 @@ export function AiTripPlanner() {
       <AdvisorChatPanel
         getValues={getValues}
         reset={reset}
+        setValue={setValue}
         messages={messages}
         onMessagesChange={setMessages}
       />

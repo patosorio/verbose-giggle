@@ -6,7 +6,7 @@ import {
   DEFAULT_LEG_FILTERS,
   legFiltersFieldsSchema,
 } from "@/components/legs/LegFiltersFields";
-import type { AirportCandidateOut, BudgetBand } from "@/lib/types";
+import type { AdvisorMessageIn, AirportCandidateOut, BudgetBand } from "@/lib/types";
 
 const airportCandidateSchema = z.object({
   iata: z.string(),
@@ -154,4 +154,24 @@ export function mergeLockedWithAdvisorLegs(
     result.push(leftover);
   }
   return result;
+}
+
+export type AdvisorChatLine = {
+  role: "user" | "assistant";
+  content: string;
+  questions?: string[];
+};
+
+export function chatLinesToApiMessages(
+  lines: AdvisorChatLine[]
+): AdvisorMessageIn[] {
+  return lines.map((line) => {
+    if (line.role !== "assistant" || !line.questions?.length) {
+      return { role: line.role, content: line.content };
+    }
+    const numbered = line.questions
+      .map((question, index) => `${index + 1}. ${question}`)
+      .join("\n");
+    return { role: "assistant", content: `${line.content}\n\n${numbered}` };
+  });
 }

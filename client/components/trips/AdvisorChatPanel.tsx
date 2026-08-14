@@ -1,20 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import type { UseFormGetValues, UseFormReset } from "react-hook-form";
+import type { UseFormGetValues, UseFormReset, UseFormSetValue } from "react-hook-form";
 import { toast } from "sonner";
 
 import {
   DEFAULT_LEG_FILTERS,
 } from "@/components/legs/LegFiltersFields";
-import type { AiPlannerFormValues } from "@/components/trips/ai-planner-types";
-import { mergeLockedWithAdvisorLegs } from "@/components/trips/ai-planner-types";
+import { AdvisorReplyMarkdown } from "@/components/trips/AdvisorReplyMarkdown";
+import {
+  chatLinesToApiMessages,
+  mergeLockedWithAdvisorLegs,
+  type AdvisorChatLine,
+  type AiPlannerFormValues,
+} from "@/components/trips/ai-planner-types";
 import { Button } from "@/components/ui/button";
 import { useAdvisorTurn } from "@/hooks/use-advisor";
 import { ApiError } from "@/lib/api-client";
 import type {
   AdvisorLegIn,
-  AdvisorMessageIn,
   AdvisorTurnResponse,
   AirportCandidateOut,
   BudgetBand,
@@ -24,8 +28,9 @@ import type {
 interface AdvisorChatPanelProps {
   getValues: UseFormGetValues<AiPlannerFormValues>;
   reset: UseFormReset<AiPlannerFormValues>;
-  messages: AdvisorMessageIn[];
-  onMessagesChange: (messages: AdvisorMessageIn[]) => void;
+  setValue: UseFormSetValue<AiPlannerFormValues>;
+  messages: AdvisorChatLine[];
+  onMessagesChange: (messages: AdvisorChatLine[]) => void;
 }
 
 function buildFiltersFromLeg(
@@ -105,8 +110,14 @@ function proposedToFormLeg(leg: ProposedLegOut): AiPlannerFormValues["legs"][num
   };
 }
 
+function filledOrCurrent(next: string | null | undefined, current: string): string {
+  const trimmed = next?.trim() ?? "";
+  return trimmed !== "" ? trimmed : current;
+}
+
 function applyAdvisorResponse(
   reset: UseFormReset<AiPlannerFormValues>,
+  setValue: UseFormSetValue<AiPlannerFormValues>,
   getValues: UseFormGetValues<AiPlannerFormValues>,
   response: AdvisorTurnResponse,
   legsBefore: AiPlannerFormValues["legs"]
@@ -115,13 +126,28 @@ function applyAdvisorResponse(
   const targetRaw = response.budget_target_amount;
   const targetStr =
     targetRaw === null || targetRaw === undefined ? "" : String(targetRaw);
+  const nextName = filledOrCurrent(response.trip_name, current.name);
+  const nextCurrency = filledOrCurrent(
+    response.home_currency,
+    current.home_currency
+  );
+  const nextBand = (response.budget_band ?? current.budget_band) as BudgetBand;
+  const nextTarget =
+    targetStr !== "" ? targetStr : current.budget_target_amount;
+
+  if (response.action !== "revise") {
+    setValue("name", nextName);
+    setValue("home_currency", nextCurrency);
+    setValue("budget_band", nextBand);
+    setValue("budget_target_amount", nextTarget);
+    return;
+  }
 
   reset({
-    name: response.trip_name ?? current.name,
-    home_currency: response.home_currency ?? current.home_currency,
-    budget_band: (response.budget_band ?? current.budget_band) as BudgetBand,
-    budget_target_amount:
-      targetStr !== "" ? targetStr : current.budget_target_amount,
+    name: nextName,
+    home_currency: nextCurrency,
+    budget_band: nextBand,
+    budget_target_amount: nextTarget,
     legs: mergeLockedWithAdvisorLegs(
       legsBefore,
       response.legs.map(proposedToFormLeg)
@@ -132,6 +158,7 @@ function applyAdvisorResponse(
 export function AdvisorChatPanel({
   getValues,
   reset,
+  setValue,
   messages,
   onMessagesChange,
 }: AdvisorChatPanelProps) {
@@ -146,7 +173,7 @@ export function AdvisorChatPanel({
     const legsBefore = values.legs.map((leg) => ({ ...leg }));
     const unlocked = values.legs.filter((leg) => !leg.locked);
     const locked = values.legs.filter((leg) => leg.locked);
-    const nextMessages: AdvisorMessageIn[] = [
+    const nextMessages: AdvisorChatLine[] = [
       ...messages,
       { role: "user", content },
     ];
@@ -159,7 +186,7 @@ export function AdvisorChatPanel({
 
     try {
       const response = await advisorTurn.mutateAsync({
-        messages: nextMessages,
+        messages: chatLinesToApiMessages(nextMessages),
         current_legs: unlocked.map(formLegToAdvisor),
         locked_legs: locked.map(formLegToAdvisor),
         trip_name: values.name.trim() || null,
@@ -171,10 +198,14 @@ export function AdvisorChatPanel({
             : null,
       });
 
-      applyAdvisorResponse(reset, getValues, response, legsBefore);
+      applyAdvisorResponse(reset, setValue, getValues, response, legsBefore);
       onMessagesChange([
         ...nextMessages,
-        { role: "assistant", content: response.reply },
+        {
+          role: "assistant",
+          content: response.reply,
+          questions: response.questions ?? [],
+        },
       ]);
     } catch (error) {
       onMessagesChange(messages);
@@ -195,13 +226,13 @@ export function AdvisorChatPanel({
       </p>
       <div className="rounded-[var(--radius-chip)] bg-surface-alt p-3">
         <p className="text-sm text-ink-muted">
-          Chat revises unlocked legs only. Lock a leg to keep it out of the next AI
-          turn.
+          Chat first, then it fills stops when you agree. Lock a leg to keep it
+          out of later edits.
         </p>
         {messages.length === 0 ? (
           <p className="mt-2 text-sm text-ink-muted">
-            Try “planning a trip to Thailand” — the advisor will ask clarifying
-            questions instead of inventing dates.
+            Try “planning a trip to Thailand” — questions first; once you agree,
+            it fills the stops.
           </p>
         ) : null}
       </div>
@@ -213,10 +244,23 @@ export function AdvisorChatPanel({
             className={
               message.role === "user"
                 ? "self-end max-w-[90%] rounded-[var(--radius-card)] bg-ink px-3 py-2 text-sm text-white"
-                : "self-start max-w-[90%] rounded-[var(--radius-card)] border border-border-soft bg-surface-alt px-3 py-2 text-sm text-ink"
+                : "self-start max-w-[90%] rounded-[var(--radius-card)] border border-border-soft bg-surface-alt px-3 py-2 text-ink"
             }
           >
-            {message.content}
+            {message.role === "user" ? (
+              message.content
+            ) : (
+              <div className="flex flex-col gap-2">
+                <AdvisorReplyMarkdown text={message.content} />
+                {message.questions && message.questions.length > 0 ? (
+                  <ol className="list-decimal space-y-1 pl-4 text-sm">
+                    {message.questions.map((question, questionIndex) => (
+                      <li key={questionIndex}>{question}</li>
+                    ))}
+                  </ol>
+                ) : null}
+              </div>
+            )}
           </li>
         ))}
       </ul>

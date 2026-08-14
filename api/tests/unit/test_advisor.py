@@ -11,26 +11,62 @@ from pydantic import ValidationError
 from schemas.advisor import AdvisorLegIn, AdvisorMessageIn, AdvisorTurnIn
 from services.advisor import (
     attach_airport_resolution,
-    parse_advisor_turn_payload,
+    parse_ask_user_payload,
+    parse_revise_itinerary_payload,
     run_advisor_turn,
 )
 from services.airports import resolve_place
 
 
-def test_parse_normal_turn() -> None:
-    parsed = parse_advisor_turn_payload(
+def test_parse_ask_user_gathering() -> None:
+    parsed = parse_ask_user_payload(
         {
-            "reply": "Got it — I'll start with Bangkok. When are you traveling?",
+            "reply": "Happy to help with **Thailand**. A few details so I don't guess.",
+            "questions": [
+                "Where are you flying from?",
+                "Roughly which dates?",
+                "How many adults and children?",
+            ],
+            "trip_name": None,
+            "home_currency": None,
+            "budget_band": None,
+            "budget_target_amount": None,
+        }
+    )
+    assert parsed.questions[0].startswith("Where")
+    assert "Thailand" in parsed.reply
+    assert len(parsed.questions) == 3
+
+
+def test_parse_ask_user_requires_questions() -> None:
+    with pytest.raises(ValidationError):
+        parse_ask_user_payload(
+            {
+                "reply": "Happy to help — how many people?",
+                "questions": [],
+            }
+        )
+
+
+def test_parse_revise_itinerary_normal() -> None:
+    parsed = parse_revise_itinerary_payload(
+        {
+            "reply": "Added **Bangkok**, 1–5 May.",
+            "questions": ["Want a hotel search there, or staying with friends?"],
             "legs": [
                 {
                     "origin": "Singapore",
                     "destination": "Bangkok",
-                    "start_date": None,
-                    "end_date": None,
+                    "start_date": "2026-05-01",
+                    "end_date": "2026-05-05",
                     "skip_hotel": False,
                     "skip_flight": False,
                     "locked": False,
-                    "filters": {},
+                    "filters": {
+                        "occupancy": {
+                            "rooms": [{"adults": 2, "children": 0, "children_ages": []}]
+                        }
+                    },
                 }
             ],
             "trip_name": "Thailand 2026",
@@ -39,34 +75,29 @@ def test_parse_normal_turn() -> None:
             "budget_target_amount": None,
         }
     )
-    assert parsed.reply.startswith("Got it")
+    assert parsed.reply.startswith("Added")
     assert len(parsed.legs) == 1
     assert parsed.legs[0].destination == "Bangkok"
-    assert parsed.legs[0].start_date is None
+    assert parsed.legs[0].start_date is not None
     assert parsed.budget_band == "comfort"
+    assert len(parsed.questions) == 1
 
 
-def test_parse_empty_legs_gathering_info() -> None:
-    parsed = parse_advisor_turn_payload(
-        {
-            "reply": "Happy to help — how many people, and roughly which dates?",
-            "legs": [],
-            "trip_name": None,
-            "home_currency": None,
-            "budget_band": None,
-            "budget_target_amount": None,
-        }
-    )
-    assert parsed.legs == []
-    assert "dates" in parsed.reply.lower() or "people" in parsed.reply.lower()
-
-
-def test_parse_malformed_payload_raises() -> None:
+def test_parse_revise_malformed_payload_raises() -> None:
     with pytest.raises(ValidationError):
-        parse_advisor_turn_payload(
+        parse_revise_itinerary_payload(
             {
                 "reply": "ok",
                 "legs": [{"origin": 123, "destination": None}],
+            }
+        )
+
+
+def test_parse_revise_missing_reply_raises() -> None:
+    with pytest.raises(ValidationError):
+        parse_revise_itinerary_payload(
+            {
+                "legs": [{"origin": "Singapore", "destination": "Bangkok"}],
             }
         )
 
@@ -102,8 +133,8 @@ def test_attach_airport_resolution_ambiguous_city() -> None:
 
 
 @pytest.mark.asyncio
-async def test_max_turns_echoes_current_legs_without_claude() -> None:
-    """Hard cap path must not touch Anthropic — only resolve_place on current_legs."""
+async def test_max_turns_is_ask_without_claude() -> None:
+    """Hard cap path must not touch Anthropic and must not rewrite legs."""
     messages = [
         AdvisorMessageIn(
             role="user" if i % 2 == 0 else "assistant",
@@ -122,8 +153,9 @@ async def test_max_turns_echoes_current_legs_without_claude() -> None:
         budget_target_amount=None,
     )
     result = await run_advisor_turn(turn, trace_id="test-max-turns")
+    assert result.action == "ask"
+    assert result.legs == []
+    assert result.questions == []
     assert "form" in result.reply.lower() or "conversation" in result.reply.lower()
-    assert len(result.legs) == 1
-    assert result.legs[0].destination == "Bangkok"
     assert result.trip_name == "Cap test"
     assert result.budget_band == "budget"

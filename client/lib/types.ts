@@ -357,7 +357,9 @@ export interface AdvisorTurnIn {
 }
 
 export interface AdvisorTurnResponse {
+  action: "ask" | "revise";
   reply: string;
+  questions: string[];
   legs: ProposedLegOut[];
   trip_name: string | null;
   home_currency: string | null;

@@ -64,12 +64,26 @@ class ProposedLegOut(AdvisorLegIn):
     destination_candidates: list[AirportCandidateOut] = Field(default_factory=list)
 
 
-class AdvisorTurnOut(BaseModel):
-    """Tool/parse-layer shape — plain legs, no IATA fields (model never resolves airports)."""
+class AdvisorAskOut(BaseModel):
+    """ask_user tool input — conversation only; never includes legs."""
 
     model_config = ConfigDict(extra="forbid")
 
-    reply: str
+    reply: str = Field(min_length=1)
+    questions: list[str] = Field(min_length=1)
+    trip_name: str | None = None
+    home_currency: str | None = None
+    budget_band: BudgetBand | None = None
+    budget_target_amount: Decimal | None = None
+
+
+class AdvisorReviseOut(BaseModel):
+    """revise_itinerary tool input — full unlocked itinerary after this turn."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reply: str = Field(min_length=1)
+    questions: list[str] = Field(default_factory=list)
     legs: list[AdvisorLegIn]
     trip_name: str | None = None
     home_currency: str | None = None
@@ -78,11 +92,13 @@ class AdvisorTurnOut(BaseModel):
 
 
 class AdvisorTurnResponse(BaseModel):
-    """HTTP response after deterministic IATA resolution — legs are ProposedLegOut."""
+    """HTTP response. `legs` is populated only when action is revise (IATA-resolved)."""
 
     model_config = ConfigDict(extra="forbid")
 
+    action: Literal["ask", "revise"]
     reply: str
+    questions: list[str]
     legs: list[ProposedLegOut]
     trip_name: str | None = None
     home_currency: str | None = None

@@ -64,18 +64,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <header className="shrink-0 flex flex-wrap items-center justify-between gap-4 border-b border-border-soft px-6 py-5 md:px-14 md:py-7">
+      <header className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-border-soft bg-bg px-6 py-3 md:px-10 md:py-3">
         <Link
           href="/trips"
-          className="flex items-center gap-3.5 rounded-chip outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="flex items-center gap-2.5 rounded-chip outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <div
-            className="flex h-11 w-11 shrink-0 rotate-[-6deg] items-center justify-center rounded-chip bg-coral-pink"
+            className="flex h-8 w-8 shrink-0 rotate-[-6deg] items-center justify-center rounded-chip bg-coral-pink"
             aria-hidden
           >
-            <span className="font-display text-xl font-black text-white">T</span>
+            <span className="font-display text-base font-black text-white">T</span>
           </div>
-          <span className="font-display text-[26px] font-black tracking-tight text-ink">
+          <span className="font-display text-xl font-black tracking-tight text-ink">
             Travel
           </span>
         </Link>
@@ -89,14 +89,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         )}
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {tripId && visibleTravelers.length > 0 && (
             <div className="flex items-center" aria-hidden>
               {visibleTravelers.map((traveler, index) => (
                 <span
                   key={traveler.id}
                   className={cn(
-                    "-ml-2.5 flex size-[34px] items-center justify-center rounded-full border-[3px] border-white text-[13px] font-semibold first:ml-0",
+                    "-ml-2 flex size-7 items-center justify-center rounded-full border-2 border-white text-[11px] font-semibold first:ml-0",
                     ACCENT_FILL_CLASSES[accentAt(index)]
                   )}
                 >
@@ -106,7 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {overflowCount > 0 && (
                 <span
                   className={cn(
-                    "-ml-2.5 flex size-[34px] items-center justify-center rounded-full border-[3px] border-white text-[13px] font-semibold",
+                    "-ml-2 flex size-7 items-center justify-center rounded-full border-2 border-white text-[11px] font-semibold",
                     ACCENT_FILL_CLASSES[accentAt(visibleTravelers.length)]
                   )}
                 >
@@ -122,7 +122,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 render={
                   <Button
                     type="button"
-                    className="h-auto rounded-pill bg-ink px-[22px] py-3 font-display text-[13px] font-bold text-white hover:bg-ink hover:brightness-110"
+                    size="sm"
+                    className="bg-ink text-white hover:bg-ink hover:brightness-110"
                   />
                 }
               >
@@ -155,12 +156,20 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <Link
             href="/account"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "border-border-interactive bg-surface-alt text-ink hover:bg-surface-alt hover:brightness-[0.98]"
+            )}
           >
             Account
           </Link>
 
-          <Button variant="outline" size="sm" onClick={handleLogout}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-border-interactive bg-surface-alt text-ink hover:bg-surface-alt hover:brightness-[0.98]"
+            onClick={handleLogout}
+          >
             Log out
           </Button>
         </div>

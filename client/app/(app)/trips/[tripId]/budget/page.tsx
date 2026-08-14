@@ -138,7 +138,7 @@ export default function TripBudgetPage() {
         </h1>
       </div>
 
-      <section className="rounded-panel border border-border-soft p-6 shadow-card">
+      <section className="rounded-panel border border-border-soft bg-bg p-6 shadow-card">
         {progressPct !== null && (
           <div className="mb-2.5 flex h-3.5 overflow-hidden rounded-pill bg-surface-alt">
             <div className="bg-coral-pink" style={{ width: `${progressPct}%` }} />
@@ -169,7 +169,7 @@ export default function TripBudgetPage() {
           return (
             <section
               key={type}
-              className="flex flex-col gap-3 rounded-panel border border-border-soft p-6 shadow-card"
+              className="flex flex-col gap-3 rounded-panel border border-border-soft bg-bg p-6 shadow-card"
             >
               <div className="flex items-baseline justify-between gap-4">
                 <h2 className="font-display text-lg font-bold text-ink">
